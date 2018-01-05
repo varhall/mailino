@@ -6,7 +6,12 @@ use Varhall\Dbino\Model;
 use Varhall\Dbino\Plugins\JsonPlugin;
 use Varhall\Dbino\Plugins\TimestampPlugin;
 
-class Emails extends Model
+/**
+ * Model class of email. Used a bit as an email log.
+ *
+ * @author Ondrej Sibrava <sibrava@varhall.cz>
+ */
+class Email extends Model
 {
     protected function plugins()
     {

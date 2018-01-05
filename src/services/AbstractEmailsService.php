@@ -2,7 +2,7 @@
 
 namespace Varhall\Mailino\Services;
 
-use Varhall\Mailino\Models\Emails;
+use Varhall\Mailino\Models\Email;
 
 /**
  * Class AbstractEmailsService
@@ -101,7 +101,17 @@ abstract class AbstractEmailsService
 
 
     ///////////////////////////////////////// PUBLIC METHODS ///////////////////////////////////////////////////////////
-    
+
+    /**
+     * Sends email message. This method loads template files defined in "template_dir" path. There have to be two files
+     * for each template name (HTML and plain text versions). Arguments from associative $data array are passed to the
+     * template files as standard variables. Sent email is stored after that.
+     *
+     * @param $recipient Recipient email
+     * @param $subject Email subject
+     * @param $template Name of template file - eg. 'welcome' - looks for 'welcome.html.latte' and 'welcome.plain.latte'
+     * @param array $data Array of arguments
+     */
     protected function sendMessage($recipient, $subject, $template, array $data)
     {
         $latte = new \Latte\Engine();
@@ -132,8 +142,14 @@ abstract class AbstractEmailsService
         ]);
     }
 
+    /**
+     * Stores sent email message to the database
+     *
+     * @param $data
+     * @return \Varhall\Dbino\Model
+     */
     protected function saveEmail($data)
     {
-        return Emails::create($data);
+        return Email::create($data);
     }
 }
