@@ -19,6 +19,7 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
             'sender_email'      => '',
             'sender_name'       => '',
             'subject_prefix'    => '',
+            'verify_ssl'        => FALSE,
         ]);
     }
 
@@ -39,6 +40,7 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
             $this->addServiceSetup($definition, 'setSenderEmail', $config['sender_email']);
             $this->addServiceSetup($definition, 'setSenderName', $config['sender_name']);
             $this->addServiceSetup($definition, 'setSubjectPrefix', $config['subject_prefix']);
+            $this->addServiceSetup($definition, 'setVerifySsl', $config['verify_ssl']);
         }
     }
 

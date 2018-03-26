@@ -2,6 +2,7 @@
 
 namespace Varhall\Mailino\Services;
 
+use Nette\Mail\SmtpMailer;
 use Varhall\Mailino\Models\Email;
 
 /**
@@ -22,6 +23,8 @@ abstract class AbstractEmailsService
     private $subjectPrefix = '';
     
     private $templateDir = '';
+
+    private $verifySsl = FALSE;
     
     
     public function __construct(\Nette\Mail\IMailer $mailer)
@@ -98,6 +101,24 @@ abstract class AbstractEmailsService
         $this->templateDir = $templateDir;
     }
 
+    /**
+     * @return bool
+     */
+    public function getVerifySsl()
+    {
+        return $this->verifySsl;
+    }
+
+    /**
+     * @param bool $verifySsl
+     */
+    public function setVerifySsl($verifySsl)
+    {
+        $this->verifySsl = $verifySsl;
+    }
+
+
+
 
 
     ///////////////////////////////////////// PUBLIC METHODS ///////////////////////////////////////////////////////////
@@ -111,8 +132,9 @@ abstract class AbstractEmailsService
      * @param $subject Email subject
      * @param $template Name of template file - eg. 'welcome' - looks for 'welcome.html.latte' and 'welcome.plain.latte'
      * @param array $data Array of arguments
+     * @param array $attachment Array of FileUploads
      */
-    protected function sendMessage($recipient, $subject, $template, array $data)
+    protected function sendMessage($recipient, $subject, $template, array $data, array $attachments = [])
     {
         $latte = new \Latte\Engine();
    
@@ -129,7 +151,15 @@ abstract class AbstractEmailsService
             ->setSubject("{$prefix}{$subject}")
             ->setBody($plain)
             ->setHtmlBody($html);
-    
+
+        foreach ($attachments as $attachment) {
+            if ($attachment instanceof \Nette\Http\FileUpload)
+                $mail->addAttachment($attachment->getName(), $attachment->getContents(), $attachment->getContentType());
+        }
+
+        if (!$this->verifySsl)
+            $this->disableSSLVerification();
+
         $this->mailer->send($mail);
 
         $this->saveEmail([
@@ -151,5 +181,32 @@ abstract class AbstractEmailsService
     protected function saveEmail($data)
     {
         return Email::create($data);
+    }
+
+    private function disableSSLVerification()
+    {
+        stream_context_set_default([
+            'ssl' => [
+                'verify_peer'       => FALSE,
+                'verify_peer_name'  => FALSE,
+                'allow_self_signed' => TRUE
+            ]
+        ]);
+
+        /*if (!($this->mailer instanceof SmtpMailer))
+            return;
+
+        $class = new \ReflectionClass(SmtpMailer::class);
+        $prop = $class->getProperty('connection');
+        $prop->setAccessible(TRUE);
+
+        $connection = $prop->getValue($this->mailer);
+
+        dump($this->mailer);
+        dumpe($connection);
+
+        stream_context_set_option($connection, 'ssl', 'verify_peer', FALSE);
+        stream_context_set_option($connection, 'ssl', 'verify_peer_name', FALSE);
+        stream_context_set_option($connection, 'ssl', 'allow_self_signed', TRUE);*/
     }
 }
