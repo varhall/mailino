@@ -2,6 +2,7 @@
 
 namespace Varhall\Mailino\DI;
 
+use Nette\DI\Config\Helpers;
 use Varhall\Mailino\Services\AbstractEmailsService;
 
 /**
@@ -14,7 +15,7 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
     protected function configuration()
     {
         $builder = $this->getContainerBuilder();
-        return $this->getConfig([
+        return Helpers::merge($this->getConfig(), [
             'template_dir'      => $builder->parameters['appDir'] . DIRECTORY_SEPARATOR . '/presenters/templates/emails',
             'sender_email'      => '',
             'sender_name'       => '',
