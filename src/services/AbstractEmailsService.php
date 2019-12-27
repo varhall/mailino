@@ -136,7 +136,7 @@ abstract class AbstractEmailsService
      */
     protected function sendMessage($recipient, $subject, $template, array $data, array $attachments = [])
     {
-        $latte = new \Latte\Engine();
+        $latte = $this->createTemplate();
    
         $html = $latte->renderToString($this->templateDir . "/{$template}.html.latte", $data);
         $plain = $latte->renderToString($this->templateDir . "/{$template}.plain.latte", $data);
@@ -183,6 +183,16 @@ abstract class AbstractEmailsService
         return Email::create($data);
     }
 
+    /**
+     * Creates Latte template
+     * 
+     * @return \Latte\Engine
+     */
+    protected function createTemplate()
+    {
+        return new \Latte\Engine();
+    }
+
     private function disableSSLVerification()
     {
         stream_context_set_default([
@@ -192,21 +202,5 @@ abstract class AbstractEmailsService
                 'allow_self_signed' => TRUE
             ]
         ]);
-
-        /*if (!($this->mailer instanceof SmtpMailer))
-            return;
-
-        $class = new \ReflectionClass(SmtpMailer::class);
-        $prop = $class->getProperty('connection');
-        $prop->setAccessible(TRUE);
-
-        $connection = $prop->getValue($this->mailer);
-
-        dump($this->mailer);
-        dumpe($connection);
-
-        stream_context_set_option($connection, 'ssl', 'verify_peer', FALSE);
-        stream_context_set_option($connection, 'ssl', 'verify_peer_name', FALSE);
-        stream_context_set_option($connection, 'ssl', 'allow_self_signed', TRUE);*/
     }
 }
