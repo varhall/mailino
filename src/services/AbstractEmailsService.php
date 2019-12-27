@@ -185,7 +185,7 @@ abstract class AbstractEmailsService
 
     /**
      * Creates Latte template
-     * 
+     *
      * @return \Latte\Engine
      */
     protected function createTemplate()
