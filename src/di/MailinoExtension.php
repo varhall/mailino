@@ -29,14 +29,7 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
         $config = $this->configuration();
         $builder = $this->getContainerBuilder();
 
-        $classes = $builder->getClassList();
-
-        if (empty($classes[AbstractEmailsService::class][true]))
-            return;
-
-        foreach ($classes[AbstractEmailsService::class][true] as $name) {
-            $definition = $builder->getDefinition($name);
-
+        foreach ($builder->findByType(AbstractEmailsService::class) as $definition) {
             $this->addServiceSetup($definition, 'setTemplateDir', $config['template_dir']);
             $this->addServiceSetup($definition, 'setSenderEmail', $config['sender_email']);
             $this->addServiceSetup($definition, 'setSenderName', $config['sender_name']);
