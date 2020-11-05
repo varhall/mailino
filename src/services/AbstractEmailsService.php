@@ -2,7 +2,7 @@
 
 namespace Varhall\Mailino\Services;
 
-use Nette\Mail\SmtpMailer;
+use Nette\SmartObject;
 use Varhall\Mailino\Models\Email;
 
 /**
@@ -11,22 +11,28 @@ use Varhall\Mailino\Models\Email;
  */
 abstract class AbstractEmailsService
 {
+    use SmartObject;
+
     /**
      * @var \Nette\Mail\IMailer
      */
-    private $mailer = NULL;
+    protected $mailer = null;
 
-    private $senderName = '';
-    
-    private $senderEmail = '';
+    protected $senderName = '';
 
-    private $subjectPrefix = '';
-    
-    private $templateDir = '';
+    protected $senderEmail = '';
 
-    private $verifySsl = FALSE;
-    
-    
+    protected $subjectPrefix = '';
+
+    protected $templateDir = '';
+
+    protected $verifySsl = false;
+
+    public $onSending = [];
+
+
+
+
     public function __construct(\Nette\Mail\IMailer $mailer)
     {
         $this->mailer = $mailer;
@@ -137,14 +143,14 @@ abstract class AbstractEmailsService
     protected function sendMessage($recipient, $subject, $template, array $data, array $attachments = [])
     {
         $latte = $this->createTemplate();
-   
+
         $html = $latte->renderToString($this->templateDir . "/{$template}.html.latte", $data);
         $plain = $latte->renderToString($this->templateDir . "/{$template}.plain.latte", $data);
 
         $prefix = !empty($this->subjectPrefix) ? "[{$this->subjectPrefix}] " : '';
 
         // send email
-        
+
         $mail = new \Nette\Mail\Message;
         $mail->setFrom($this->senderEmail, $this->senderName)
             ->addTo($recipient)
@@ -159,6 +165,8 @@ abstract class AbstractEmailsService
 
         if (!$this->verifySsl)
             $this->disableSSLVerification();
+
+        $this->onSending($mail);
 
         $this->mailer->send($mail);
 
