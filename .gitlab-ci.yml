@@ -33,4 +33,4 @@ test:
     - master
   script:
     - echo "Running tests"
-    - vendor/bin/nunjuck tests/cases -w src -w tests/cases -w tests/engine
+    - vendor/bin/nunjuck tests/cases
