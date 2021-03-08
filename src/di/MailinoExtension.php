@@ -2,8 +2,15 @@
 
 namespace Varhall\Mailino\DI;
 
-use Nette\DI\Config\Helpers;
-use Varhall\Mailino\Services\AbstractEmailsService;
+use Latte\Engine;
+use Nette\Schema\Expect;
+use Nette\Schema\Schema;
+use Qferrer\Mjml\Renderer\ApiRenderer;
+use Varhall\Mailino\Config\Config;
+use Varhall\Mailino\Config\Sender;
+use Varhall\Mailino\Mailino;
+use Varhall\Mailino\Services\HtmlMailService;
+use Varhall\Mailino\Services\MjmlMailService;
 
 /**
  * Nette extension class
@@ -12,39 +19,43 @@ use Varhall\Mailino\Services\AbstractEmailsService;
  */
 class MailinoExtension extends \Nette\DI\CompilerExtension
 {
-    protected function configuration()
+    public function getConfigSchema(): Schema
     {
-        $builder = $this->getContainerBuilder();
-        return Helpers::merge($this->getConfig(), [
-            'template_dir'      => $builder->parameters['appDir'] . DIRECTORY_SEPARATOR . '/presenters/templates/emails',
-            'sender_email'      => '',
-            'sender_name'       => '',
-            'subject_prefix'    => '',
-            'verify_ssl'        => FALSE,
+        return Expect::structure([
+            'template_dir'      => Expect::string()->required(),
+            'sender'            => Expect::structure([
+                'email'             => Expect::email()->required(),
+                'name'              => Expect::string()->required()
+            ]),
+            'subject_prefix'    => Expect::string(),
+            'verify_ssl'        => Expect::bool()->default(false),
+            'mjml'              => Expect::structure([
+                'api_id'            => Expect::string(),
+                'secret'            => Expect::string()
+            ])
         ]);
     }
 
-    public function beforeCompile()
+    public function loadConfiguration()
     {
-        $config = $this->configuration();
+        $config = $this->config;
         $builder = $this->getContainerBuilder();
 
-        foreach ($builder->findByType(AbstractEmailsService::class) as $definition) {
-            $this->addServiceSetup($definition, 'setTemplateDir', $config['template_dir']);
-            $this->addServiceSetup($definition, 'setSenderEmail', $config['sender_email']);
-            $this->addServiceSetup($definition, 'setSenderName', $config['sender_name']);
-            $this->addServiceSetup($definition, 'setSubjectPrefix', $config['subject_prefix']);
-            $this->addServiceSetup($definition, 'setVerifySsl', $config['verify_ssl']);
-        }
-    }
+        $sender = $builder->addDefinition($this->prefix('sender'))->setFactory(Sender::class, [ $config->sender->email, $config->sender->name ]);
 
-    protected function addServiceSetup(&$definitition, $entity, $value)
-    {
-        foreach ($definitition->getSetup() as $setup) {
-            if ($setup->entity === $entity)
-                return;
-        }
+        $builder->addDefinition($this->prefix('config'))->setFactory(Config::class, [
+            $config->template_dir,
+            $sender,
+            $config->subject_prefix,
+            $config->verify_ssl
+        ]);
 
-        $definitition->addSetup($entity, [ $value ]);
+        $builder->addDefinition($this->prefix('service.mjml'))->setFactory(ApiRenderer::class, [ $config->mjml->api_id ?? '', $config->mjml->secret ?? '' ]);
+        $builder->addDefinition($this->prefix('service.latte'))->setType(Engine::class);
+
+        $builder->addDefinition($this->prefix('mailino'))->setType(Mailino::class);
+
+        $builder->addDefinition($this->prefix('mail.html'))->setType(HtmlMailService::class);
+        $builder->addDefinition($this->prefix('mail.mjml'))->setType(MjmlMailService::class);
     }
 }

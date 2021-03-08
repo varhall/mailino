@@ -1,0 +1,8 @@
+services:
+  mailino:
+    image: varhall_mailino
+    container_name: varhall_mailino
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app

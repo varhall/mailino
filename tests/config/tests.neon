@@ -1,0 +1,6 @@
+mailino:
+	template_dir: %appDir%/../tests/fixtures/templates/
+	sender:
+		email: 'sender@test.com'
+		name: 'Sender'
+	subject_prefix: 'TST'
