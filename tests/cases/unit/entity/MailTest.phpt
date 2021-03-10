@@ -2,6 +2,7 @@
 
 namespace Varhall\Mailino\Tests\Unit\Entity;
 
+use Nette\Mail\Message;
 use Tester\Assert;
 use Tester\TestCase;
 use Varhall\Mailino\Entity\Mail;
@@ -55,6 +56,19 @@ class MailTest extends TestCase
         $mail->setSubject('test', '');
 
         Assert::equal('test', $mail->getSubject());
+    }
+
+    public function testAddTo()
+    {
+        $message = \Mockery::mock(Message::class);
+        $message->shouldReceive('addTo');
+
+        $mail = new Mail('html/test', [], $message);
+
+        $mail->addTo('foo@test.com');
+        $mail->addTo('bar@test.com', 'bar');
+
+        Assert::equal([ 'foo@test.com' => null, 'bar@test.com' => 'bar' ], $mail->getTo());
     }
 }
 

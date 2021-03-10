@@ -8,7 +8,6 @@ use Nette\Mail\Message;
  * @method array getFrom()
  * @method Mail setFrom(string $email, string $name)
  * @method string getSubject()
- * @method Mail addTo(string $email)
  * @method Mail addCc(string $email)
  * @method Mail addBcc(string $email)
  */
@@ -25,6 +24,9 @@ class Mail
 
     /** @var array */
     protected $data = [];
+
+    /** @var array */
+    protected $to = [];
 
 
     public function __construct(string $template, array $data = [], ?Message $message = null)
@@ -89,6 +91,19 @@ class Mail
     {
         $this->template = $template;
         return $this;
+    }
+
+    public function addTo(string $email, string $name = null): Mail
+    {
+        $this->message->addTo($email, $name);
+        $this->to[$email] = $name;
+
+        return $this;
+    }
+
+    public function getTo(): array
+    {
+        return $this->to;
     }
 
     public function getMessage(): Message
