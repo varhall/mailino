@@ -111,13 +111,26 @@ class Mail
         return $this->message;
     }
 
-    public function addFile($file): Message
+    public function addFile($file): Mail
     {
-        if ($file instanceof \Nette\Http\FileUpload)
+        if ($file instanceof \Nette\Http\FileUpload) {
             $this->message->addAttachment($file->getUntrustedName(), $file->getContents(), $file->getContentType());
+            return $this;
+        }
 
-        else if ($file instanceof \SplFileInfo)
-            $this->message->addAttachment($file->getFilename(), file_get_contents($file->getFilename()), mime_content_type($file->getFilename()));
+        if (is_string($file))
+            $file = new \SplFileInfo($file);
+
+        $path = $file->getPathname();
+        if (preg_match('#^http#i', $file->getPathname())) {
+            $path = tempnam(sys_get_temp_dir(), '');
+            file_put_contents($path, file_get_contents($file->getPathname()));
+        }
+
+        $this->message->addAttachment($file->getFilename(), file_get_contents($path), mime_content_type($path));
+
+        if ($path !== $file->getPathname())
+            unlink($path);
 
         return $this;
     }

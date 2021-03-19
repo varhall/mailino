@@ -2,8 +2,11 @@
 
 namespace Varhall\Mailino\Tests\Unit\Entity;
 
+use Nette\Http\FileUpload;
 use Nette\Mail\Message;
+use Nette\Mail\MimePart;
 use Tester\Assert;
+use Tester\FileMock;
 use Tester\TestCase;
 use Varhall\Mailino\Entity\Mail;
 
@@ -69,6 +72,63 @@ class MailTest extends TestCase
         $mail->addTo('bar@test.com', 'bar');
 
         Assert::equal([ 'foo@test.com' => null, 'bar@test.com' => 'bar' ], $mail->getTo());
+    }
+
+    public function testAddFile_FileUpload()
+    {
+        $message = \Mockery::mock(Message::class);
+        $message->shouldReceive('addAttachment')
+            ->andReturnUsing(function($filename, $content, $type) {
+                Assert::equal('name', $filename);
+                Assert::equal('contents', $content);
+                Assert::equal('contenttype', $type);
+
+                return \Mockery::mock(MimePart::class);
+            });
+
+        $file = \Mockery::mock(FileUpload::class);
+        $file->shouldReceive('getUntrustedName')->andReturn('name');
+        $file->shouldReceive('getContents')->andReturn('contents');
+        $file->shouldReceive('getContentType')->andReturn('contenttype');
+
+        $mail = new Mail('html/test', [], $message);
+        $mail->addFile($file);
+    }
+
+    public function testAddFile_string()
+    {
+        $file = FIXTURES_DIR . '/attachment.txt';
+
+        $message = \Mockery::mock(Message::class);
+        $message->shouldReceive('addAttachment')
+            ->andReturnUsing(function($filename, $content, $type) {
+                Assert::equal('attachment.txt', $filename);
+                Assert::equal('hello world', $content);
+                Assert::equal('text/plain', $type);
+
+                return \Mockery::mock(MimePart::class);
+            });
+
+        $mail = new Mail('html/test', [], $message);
+        $mail->addFile($file);
+    }
+
+    public function testAddFile_local()
+    {
+        $file = FIXTURES_DIR . '/attachment.txt';
+
+        $message = \Mockery::mock(Message::class);
+        $message->shouldReceive('addAttachment')
+            ->andReturnUsing(function($filename, $content, $type) {
+                Assert::equal('attachment.txt', $filename);
+                Assert::equal('hello world', $content);
+                Assert::equal('text/plain', $type);
+
+                return \Mockery::mock(MimePart::class);
+            });
+
+        $mail = new Mail('html/test', [], $message);
+        $mail->addFile(new \SplFileInfo($file));
     }
 }
 
