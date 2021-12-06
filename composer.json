@@ -1,9 +1,9 @@
 {
 	"name": "varhall/mailino",
 	"type": "library",
-	"description": "Varhall email service",
+	"description": "Varhall email library",
 	"keywords": ["nette", "emails", "messages"],
-	"homepage": "https://gitlab.com/varhallpub/mailino",
+	"homepage": "https://github.com/varhall/mailino",
 	"license": "MIT",
         "authors": [
 		{
@@ -12,7 +12,7 @@
 		}
 	],
 	"support": {
-		"issues": "https://gitlab.com/varhallpub/mailino"
+		"issues": "https://github.com/varhall/mailino"
 	},
 
 	"require": {
@@ -25,20 +25,13 @@
 
 	"require-dev": {
 		"ninjify/nunjuck": "^0.3.0",
-		"mockery/mockery": "^1.4.3"
+		"ninjify/qa": "^0.12",
+		"mockery/mockery": "^1.4.3",
+		"nette/bootstrap": "^3.1",
+		"nette/robot-loader": "v3.4.1"
 	},
 
 	"autoload": {
 		"classmap": [ "src/" ]
-	},
-
-	"autoload-dev": {
-		"classmap": [ "tests/engine/" ]
-	},
-
-	"scripts": {
-		"tester": [
-			"nunjuck tests/cases -s -p php -c tests/php.ini"
-		]
 	}
 }

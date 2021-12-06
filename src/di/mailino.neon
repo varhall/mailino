@@ -1,0 +1,9 @@
+services:
+	- Varhall\Mailino\Mailino
+	- Varhall\Mailino\Exchanges\MailExchange
+
+	# decorators
+	- Varhall\Mailino\Extensions\Prefix
+	- Varhall\Mailino\Extensions\MjmlApi
+	- Varhall\Mailino\Extensions\MjmlBinary
+

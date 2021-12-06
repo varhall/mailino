@@ -8,8 +8,15 @@ if (@!include __DIR__ . '/../vendor/autoload.php') {
 }
 
 // Configure environment
-Environment::setupTester();
-Environment::setupTimezone();
-Environment::setupVariables(__DIR__);
+Environment::setup(__DIR__);
 
-define('FIXTURES_DIR', __DIR__ . '/fixtures');
+define('SRC_DIR', realpath(TESTER_DIR . '/../src'));
+define('CONFIG_DIR', TESTER_DIR . '/config');
+define('FIXTURES_DIR', TESTER_DIR . '/fixtures');
+
+Environment::setupRobotLoader(function($loader) {
+    $loader->addDirectory(__DIR__);
+    $loader->addDirectory(SRC_DIR);
+    $loader->setAutoRefresh(true);
+});
+

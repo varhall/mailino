@@ -1,6 +1,21 @@
+services:
+	- Latte\Engine
+
+extensions:
+	mailino: Varhall\Mailino\DI\MailinoExtension
+
 mailino:
 	template_dir: %appDir%/../tests/fixtures/templates/
 	sender:
 		email: 'sender@test.com'
 		name: 'Sender'
-	subject_prefix: 'TST'
+	extensions:
+		prefix:
+			subject: 'TST'
+
+		mjml.api:
+			id: '123456'
+			secret: '654321'
+
+		mjml.binary:
+			binary: 'none'

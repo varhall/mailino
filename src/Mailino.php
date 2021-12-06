@@ -2,53 +2,41 @@
 
 namespace Varhall\Mailino;
 
-use Latte\Engine;
-use Nette\Bridges\ApplicationLatte\LatteFactory;
-use Nette\Mail\Mailer;
-use Qferrer\Mjml\Renderer\RendererInterface;
-use Varhall\Mailino\Config\Config;
+use Nette\DI\Container;
+use Varhall\Mailino\Entities\IMail;
+use Varhall\Mailino\Entities\Mail;
+use Varhall\Mailino\Extensions\MailDecorator;
 
 class Mailino
 {
+    /** @var Container */
+    protected $container;
+
     /** @var Config */
     protected $config;
 
-    /** @var Mailer */
-    protected $mailer;
-
-    /** @var Engine */
-    protected $latte;
-
-    /** @var RendererInterface */
-    protected $renderer;
-
-
-    public function __construct(Config $config, Mailer $mailer, Engine $latte, RendererInterface $renderer)
+    public function __construct(Container $container, Config $config)
     {
+        $this->container = $container;
         $this->config = $config;
-        $this->mailer = $mailer;
-        $this->latte = $latte;
-        $this->renderer = $renderer;
     }
 
-
-    public function getConfig(): Config
+    public function create(string $template, array $data = []): IMail
     {
-        return $this->config;
-    }
+        $dir = $this->config->getValue('template_dir');
+        $sender = $this->config->getValue('sender');
 
-    public function getMailer(): Mailer
-    {
-        return $this->mailer;
-    }
+        $mail = (new Mail($this->container, $dir))
+            ->setTemplate($template)
+            ->setData($data)
+            ->setFrom($sender['email'], $sender['name']);
 
-    public function getLatte(): Engine
-    {
-        return $this->latte;
-    }
+        foreach ($this->config->getValue('extensions') as $identifier => $extension) {
+            if ($extension['enabled']) {
+                $mail = $this->extend($mail, $identifier);
+            }
+        }
 
-    public function getRenderer(): RendererInterface
-    {
-        return $this->renderer;
+        return $mail;
     }
 }
