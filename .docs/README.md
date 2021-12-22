@@ -53,9 +53,10 @@ This very simple example shows, how to define mail service and send email using 
 
     <?php
 
-    namespace App\Models;
+    namespace App\Services;
 
-    use Varhall\Dbino\Model;
+    use Varhall\Mailino\Mailino;
+    use Varhall\Mailino\Exchanges\MailExchange;
 
     class EmailsService
     {
