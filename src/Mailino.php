@@ -29,13 +29,7 @@ class Mailino
         $mail = (new Mail($this->container, $dir))
             ->setTemplate($template)
             ->setData($data)
-            ->setFrom($sender['email'], $sender['name']);
-
-        foreach ($this->config->getValue('extensions') as $identifier => $extension) {
-            if ($extension['enabled']) {
-                $mail = $this->extend($mail, $identifier);
-            }
-        }
+            ->setFrom($sender->email, $sender->name);
 
         return $mail;
     }

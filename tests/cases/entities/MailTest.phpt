@@ -43,7 +43,7 @@ class MailTest extends ContainerTestCase
     }
 
     /** @dataProvider getRecipientTypes */
-    public function testRecipients($type)
+    public function testRecipients_Name($type)
     {
         $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
 
@@ -53,6 +53,20 @@ class MailTest extends ContainerTestCase
         Assert::equal([
             new Recipient("pepa@{$type}.cz", "Pepa {$type}"),
             new Recipient("karel@{$type}.cz", "Karel {$type}")
+        ], call_user_func([ $mail, "get{$type}" ]));
+    }
+
+    /** @dataProvider getRecipientTypes */
+    public function testRecipients_Anonymous($type)
+    {
+        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+
+        call_user_func([ $mail, "add{$type}" ], "pepa@{$type}.cz");
+        call_user_func([ $mail,"add{$type}" ], "karel@{$type}.cz");
+
+        Assert::equal([
+            new Recipient("pepa@{$type}.cz"),
+            new Recipient("karel@{$type}.cz")
         ], call_user_func([ $mail, "get{$type}" ]));
     }
 

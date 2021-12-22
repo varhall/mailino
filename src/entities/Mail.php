@@ -170,7 +170,7 @@ class Mail implements IMail
         return array_key_exists($type, $this->recipients) ? $this->recipients[$type] : [];
     }
 
-    protected function addRecipient(string $type, string $email, string $name): IMail
+    protected function addRecipient(string $type, string $email, ?string $name): IMail
     {
         $this->recipients[$type][] = new Recipient($email, $name);
         return $this;
