@@ -66,7 +66,7 @@ This very simple example shows, how to define mail service and send email using 
         /** @var MailExchange */
         private $exchange;
 
-        public function __construct(Mailino, $mailino, MailExchange $exchange)
+        public function __construct(Mailino $mailino, MailExchange $exchange)
         {
             $this->mailino = $mailino;
             $this->exchange = $exchange;
