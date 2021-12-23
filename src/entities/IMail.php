@@ -2,6 +2,8 @@
 
 namespace Varhall\Mailino\Entities;
 
+use Varhall\Mailino\Extensions\IExtension;
+
 interface IMail
 {
     public function getFrom(): Recipient;
@@ -41,5 +43,7 @@ interface IMail
     public function addFile($file, string $name = null): IMail;
 
     public function extend(string $class): IMail;
+
+    public function getExtensionFactory(string $class): IExtension;
 
 }

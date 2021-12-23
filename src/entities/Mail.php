@@ -154,12 +154,17 @@ class Mail implements IMail
 
     public function extend(string $class): IMail
     {
+        return $this->getExtensionFactory($class)->extend($this);
+    }
+
+    public function getExtensionFactory(string $class): IExtension
+    {
         $factory = $this->container->getByType($class);
 
         if (!($factory instanceof IExtension))
             throw new InvalidArgumentException("Mail extension '{$class}' does not implement " . IExtension::class);
 
-        return $factory->extend($this);
+        return $factory;
     }
 
 

@@ -8,6 +8,10 @@ use Tests\Engine\ContainerTestCase;
 use Varhall\Mailino\Entities\Attachment;
 use Varhall\Mailino\Entities\Mail;
 use Varhall\Mailino\Entities\Recipient;
+use Varhall\Mailino\Extensions\Decorators\MjmlDecorator;
+use Varhall\Mailino\Extensions\Decorators\PrefixDecorator;
+use Varhall\Mailino\Extensions\MjmlBinary;
+use Varhall\Mailino\Extensions\Prefix;
 
 
 require_once __DIR__ . '/../../bootstrap.php';
@@ -112,6 +116,26 @@ class MailTest extends ContainerTestCase
         Assert::contains('plain foo value', $mail->getPlainBody());
         Assert::contains('plain bar value', $mail->getPlainBody());
         Assert::contains('plain baz value', $mail->getPlainBody());
+    }
+
+    public function testExtend_Single()
+    {
+        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+
+        $ext = $mail->extend(Prefix::class);
+        Assert::type(PrefixDecorator::class, $ext);
+    }
+
+    public function testExtend_Multiple()
+    {
+        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+
+        $ext = $mail->setSubject('hello')
+                    ->extend(Prefix::class)
+                    ->extend(MjmlBinary::class);
+
+        Assert::type(MjmlDecorator::class, $ext);
+        Assert::equal('[TST] hello', $ext->getSubject());
     }
 }
 

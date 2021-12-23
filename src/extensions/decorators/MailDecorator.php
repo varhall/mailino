@@ -109,6 +109,11 @@ abstract class MailDecorator implements IMail
 
     public function extend(string $class): IMail
     {
-        return $this->mail->extend($class);
+        return $this->getExtensionFactory($class)->extend($this);
+    }
+
+    public function getExtensionFactory(string $class): IExtension
+    {
+        return $this->mail->getExtensionFactory($class);
     }
 }
