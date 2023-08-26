@@ -1,3 +1,6 @@
-/.idea
-/vendor*
+/vendor
 /composer.lock
+/nbproject
+/.idea
+coverage*
+!coverage.yml*
