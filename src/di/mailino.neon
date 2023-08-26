@@ -2,6 +2,8 @@ services:
 	- Varhall\Mailino\Mailino
 	- Varhall\Mailino\Exchanges\MailExchange
 
+	mailino.template_factory: Varhall\Mailino\LatteEngineFactory
+
 	# decorators
 	- Varhall\Mailino\Extensions\Prefix
 	- Varhall\Mailino\Extensions\MjmlApi

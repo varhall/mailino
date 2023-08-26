@@ -38,10 +38,10 @@ class Mail implements IMail
     protected $files = [];
 
 
-    public function __construct(Container $container, string $path)
+    public function __construct(Engine $latte, Container $container, string $path)
     {
+        $this->latte = $latte;
         $this->container = $container;
-        $this->latte = $container->getByType(Engine::class);
         $this->path = $path;
     }
 

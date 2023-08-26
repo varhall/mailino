@@ -2,6 +2,7 @@
 
 namespace Tests\Mailino\Entities;
 
+use Latte\Engine;
 use Nette\Http\FileUpload;
 use Tester\Assert;
 use Tests\Engine\ContainerTestCase;
@@ -28,9 +29,14 @@ class MailTest extends ContainerTestCase
         return [ [null], ['custom.txt'] ];
     }
 
+    protected function getEngine()
+    {
+        return new Engine();
+    }
+
     public function testGetters()
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
 
         $mail->setFrom('pepa@novak.cz', 'Pepa Novak');
         Assert::equal('pepa@novak.cz', $mail->getFrom()->getEmail());
@@ -49,7 +55,7 @@ class MailTest extends ContainerTestCase
     /** @dataProvider getRecipientTypes */
     public function testRecipients_Name($type)
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(),FIXTURES_DIR . '/templates');
 
         call_user_func([ $mail, "add{$type}" ], "pepa@{$type}.cz", "Pepa {$type}");
         call_user_func([ $mail,"add{$type}" ], "karel@{$type}.cz", "Karel {$type}");
@@ -63,7 +69,7 @@ class MailTest extends ContainerTestCase
     /** @dataProvider getRecipientTypes */
     public function testRecipients_Anonymous($type)
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
 
         call_user_func([ $mail, "add{$type}" ], "pepa@{$type}.cz");
         call_user_func([ $mail,"add{$type}" ], "karel@{$type}.cz");
@@ -77,7 +83,7 @@ class MailTest extends ContainerTestCase
     /** @dataProvider getFileNames */
     public function testAttachments($name)
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
 
         $upload = \Mockery::mock(FileUpload::class);
         $upload->shouldReceive('getContents')->andReturn('hello world');
@@ -98,7 +104,7 @@ class MailTest extends ContainerTestCase
 
     public function testHtmlBody()
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
         $mail->setTemplate('html/test');
         $mail->setData([ 'data' => ['foo', 'bar', 'baz'] ]);
 
@@ -109,7 +115,7 @@ class MailTest extends ContainerTestCase
 
     public function testPlainBody()
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
         $mail->setTemplate('html/test');
         $mail->setData([ 'data' => ['foo', 'bar', 'baz'] ]);
 
@@ -120,7 +126,7 @@ class MailTest extends ContainerTestCase
 
     public function testExtend_Single()
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
 
         $ext = $mail->extend(Prefix::class);
         Assert::type(PrefixDecorator::class, $ext);
@@ -128,7 +134,7 @@ class MailTest extends ContainerTestCase
 
     public function testExtend_Multiple()
     {
-        $mail = new Mail($this->getContainer(), FIXTURES_DIR . '/templates');
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
 
         $ext = $mail->setSubject('hello')
                     ->extend(Prefix::class)

@@ -15,10 +15,14 @@ class Mailino
     /** @var Config */
     protected $config;
 
-    public function __construct(Container $container, Config $config)
+    /** @var ILatteEngineFactory */
+    protected $latteFactory;
+
+    public function __construct(Config $config, ILatteEngineFactory $latteFactory, Container $container)
     {
-        $this->container = $container;
         $this->config = $config;
+        $this->latteFactory = $latteFactory;
+        $this->container = $container;
     }
 
     public function create(string $template, array $data = []): IMail
@@ -26,7 +30,7 @@ class Mailino
         $dir = $this->config->getValue('template_dir');
         $sender = $this->config->getValue('sender');
 
-        $mail = (new Mail($this->container, $dir))
+        $mail = (new Mail($this->latteFactory->createLatte(), $this->container, $dir))
             ->setTemplate($template)
             ->setData($data)
             ->setFrom($sender->email, $sender->name);
