@@ -24,7 +24,8 @@ abstract class MailDecorator implements IMail
 
     public function setFrom(string $email, string $name = null): IMail
     {
-        return $this->mail->setFrom($email, $name);
+        $this->mail->setFrom($email, $name);
+        return $this;
     }
 
     public function getSubject(): string
@@ -34,7 +35,8 @@ abstract class MailDecorator implements IMail
 
     public function setSubject(string $subject, string $prefix = null): IMail
     {
-        return $this->mail->setSubject($subject, $prefix);
+        $this->mail->setSubject($subject, $prefix);
+        return $this;
     }
 
     public function getData(): array
@@ -44,7 +46,8 @@ abstract class MailDecorator implements IMail
 
     public function setData(array $data): IMail
     {
-        return $this->mail->setData($data);
+        $this->mail->setData($data);
+        return $this;
     }
 
     public function getTemplate(): string
@@ -54,7 +57,8 @@ abstract class MailDecorator implements IMail
 
     public function setTemplate(string $template): IMail
     {
-        return $this->mail->setTemplate($template);
+        $this->mail->setTemplate($template);
+        return $this;
     }
 
     public function getHtmlBody(): string
@@ -74,7 +78,8 @@ abstract class MailDecorator implements IMail
 
     public function addTo(string $email, string $name = null): IMail
     {
-        return $this->mail->addTo($email, $name);
+        $this->mail->addTo($email, $name);
+        return $this;
     }
 
     public function getCc(): array
@@ -84,7 +89,8 @@ abstract class MailDecorator implements IMail
 
     public function addCc(string $email, string $name = null): IMail
     {
-        return $this->mail->addCc($email);
+        $this->mail->addCc($email);
+        return $this;
     }
 
     public function getBcc(): array
@@ -94,7 +100,8 @@ abstract class MailDecorator implements IMail
 
     public function addBcc(string $email, string $name = null): IMail
     {
-        return $this->mail->addBcc($email);
+        $this->mail->addBcc($email);
+        return $this;
     }
 
     public function getFiles(): array
@@ -104,7 +111,8 @@ abstract class MailDecorator implements IMail
 
     public function addFile($file, string $name = null): IMail
     {
-        return $this->mail->addFile($file, $name);
+        $this->mail->addFile($file, $name);
+        return $this;
     }
 
     public function extend(string $class): IMail

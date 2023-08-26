@@ -94,7 +94,7 @@ Mailino deliveres some extensions by default. These are used to extend `IMail` c
 
     $mail = $this->mailino->create('template', $data)
                         ->extend(Prefix::class)
-                        ->extend(MjmlApi:class)
+                        ->extend(MjmlApi::class)
                         ->setSubject('Welcome aboard');        
 
 <a name="prefix"></a>

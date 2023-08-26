@@ -19,16 +19,16 @@
 		"php": ">=7.4",
 		"latte/latte": "^v2.10",
 		"nette/mail": "^v3.1",
-		"nette/di": "^v3.0",
-		"qferr/mjml-php": "^1.0"
+		"nette/di": "^v3.1",
+		"qferr/mjml-php": "^2.0"
 	},
 
 	"require-dev": {
-		"ninjify/nunjuck": "^0.3.0",
-		"ninjify/qa": "^0.12",
-		"mockery/mockery": "^1.4.3",
-		"nette/bootstrap": "^3.1",
-		"nette/robot-loader": "v3.4.1"
+		"ninjify/nunjuck": "^v0.4",
+		"ninjify/qa": "^v0.13",
+		"mockery/mockery": "^1.6",
+		"nette/bootstrap": "^v3.2",
+		"nette/robot-loader": "v3.4"
 	},
 
 	"autoload": {

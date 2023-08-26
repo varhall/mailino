@@ -2,7 +2,7 @@
 
 namespace Tests\Mailino\Extensions\Decorators;
 
-use Qferrer\Mjml\Renderer\RendererInterface;
+use Qferrer\Mjml\RendererInterface;
 use Tester\Assert;
 use Tests\Engine\BaseTestCase;
 use Varhall\Mailino\Entities\Mail;

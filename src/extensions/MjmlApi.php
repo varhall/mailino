@@ -2,6 +2,7 @@
 
 namespace Varhall\Mailino\Extensions;
 
+use Qferrer\Mjml\Http\CurlApi;
 use Qferrer\Mjml\Renderer\ApiRenderer;
 use Varhall\Mailino\Config;
 use Varhall\Mailino\Entities\IMail;
@@ -20,7 +21,8 @@ class MjmlApi implements IExtension
     public function extend(IMail $mail): IMail
     {
         $config = $this->config->getExtension('mjml.api');
-        $mjml = new ApiRenderer($config['id'], $config['secret']);
+        $api = new CurlApi($config['id'], $config['secret']);
+        $mjml = new ApiRenderer($api);
 
         return new MjmlDecorator($mail, $mjml);
     }

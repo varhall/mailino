@@ -2,7 +2,7 @@
 
 namespace Varhall\Mailino\Extensions\Decorators;
 
-use Qferrer\Mjml\Renderer\RendererInterface;
+use Qferrer\Mjml\RendererInterface;
 use Varhall\Mailino\Entities\IMail;
 
 class MjmlDecorator extends MailDecorator

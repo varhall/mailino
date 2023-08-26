@@ -24,6 +24,19 @@ class PrefixTest extends ContainerTestCase
         Assert::type(PrefixDecorator::class, $decorator);
         Assert::equal('[TST] subject', $decorator->getSubject());
     }
+
+    public function testSettersOnExtension()
+    {
+        $mail = \Mockery::mock(Mail::class);
+        $mail->shouldReceive('setSubject')->andReturn($mail);
+
+        $factory = $this->getContainer()->getByType(Prefix::class);
+        $decorator = $factory->extend($mail);
+
+        $decorator = $decorator->setSubject('xxx');
+
+        Assert::type(PrefixDecorator::class, $decorator);
+    }
 }
 
 (new PrefixTest())->run();
