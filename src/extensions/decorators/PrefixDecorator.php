@@ -6,8 +6,7 @@ use Varhall\Mailino\Entities\IMail;
 
 class PrefixDecorator extends MailDecorator
 {
-    /** @var array */
-    protected $config;
+    protected array $config;
 
     public function __construct(IMail $mail, array $config = [])
     {
@@ -20,8 +19,9 @@ class PrefixDecorator extends MailDecorator
     {
         $subject = parent::getSubject();
 
-        if (!empty($this->getPrefix()))
+        if (!empty($this->getPrefix())) {
             $subject = "[{$this->getPrefix()}] {$subject}";
+        }
 
         return $subject;
     }

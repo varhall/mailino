@@ -9,8 +9,7 @@ use Varhall\Mailino\Extensions\Decorators\MjmlDecorator;
 
 class MjmlBinary implements IExtension
 {
-    /** @var Config */
-    private $config;
+    private Config $config;
 
     public function __construct(Config $config)
     {

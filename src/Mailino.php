@@ -5,18 +5,14 @@ namespace Varhall\Mailino;
 use Nette\DI\Container;
 use Varhall\Mailino\Entities\IMail;
 use Varhall\Mailino\Entities\Mail;
-use Varhall\Mailino\Extensions\MailDecorator;
 
 class Mailino
 {
-    /** @var Container */
-    protected $container;
+    protected Container $container;
 
-    /** @var Config */
-    protected $config;
+    protected Config $config;
 
-    /** @var ILatteEngineFactory */
-    protected $latteFactory;
+    protected ILatteEngineFactory $latteFactory;
 
     public function __construct(Config $config, ILatteEngineFactory $latteFactory, Container $container)
     {

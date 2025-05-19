@@ -8,7 +8,7 @@ interface IMail
 {
     public function getFrom(): Recipient;
     
-    public function setFrom(string $email, string $name = null): IMail;
+    public function setFrom(string $email, ?string $name = null): IMail;
     
     public function getSubject(): string;
 
@@ -28,19 +28,19 @@ interface IMail
 
     public function getTo(): array;
 
-    public function addTo(string $email, string $name = null): IMail;
+    public function addTo(string $email, ?string $name = null): IMail;
 
     public function getCc(): array;
 
-    public function addCc(string $email, string $name = null): IMail;
+    public function addCc(string $email, ?string $name = null): IMail;
 
     public function getBcc(): array;
 
-    public function addBcc(string $email, string $name = null): IMail;
+    public function addBcc(string $email, ?string $name = null): IMail;
 
     public function getFiles(): array;
 
-    public function addFile($file, string $name = null): IMail;
+    public function addFile($file, ?string $name = null): IMail;
 
     public function extend(string $class): IMail;
 

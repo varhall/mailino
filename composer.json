@@ -16,10 +16,10 @@
 	},
 
 	"require": {
-		"php": ">=7.4",
-		"latte/latte": "^v2.10",
-		"nette/mail": "^v3.1",
-		"nette/di": "^v3.1",
+		"php": ">=8.0",
+		"latte/latte": ">=v3.0",
+		"nette/mail": "^v4.0",
+		"nette/di": "^v3.2",
 		"qferr/mjml-php": "^2.0"
 	},
 
@@ -27,8 +27,7 @@
 		"ninjify/nunjuck": "^v0.4",
 		"ninjify/qa": "^v0.13",
 		"mockery/mockery": "^1.6",
-		"nette/bootstrap": "^v3.2",
-		"nette/robot-loader": "v3.4"
+		"nette/bootstrap": "^v3.2"
 	},
 
 	"autoload": {

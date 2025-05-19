@@ -6,8 +6,7 @@ use Nette\InvalidArgumentException;
 
 class Config
 {
-    /** @var object */
-    protected $config;
+    protected object $config;
 
     public function __construct(object $config)
     {

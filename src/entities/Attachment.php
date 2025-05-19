@@ -6,17 +6,14 @@ use Nette\Http\FileUpload;
 
 class Attachment
 {
-    /** @var string */
-    private $name;
+    private ?string $name;
 
-    /** @var string */
     private $content;
 
-    /** @var string */
     private $contentType;
 
 
-    public function __construct(string $content, string $contentType, string $name = null)
+    public function __construct(string $content, string $contentType, ?string $name = null)
     {
         $this->content = $content;
         $this->contentType = $contentType;
@@ -26,17 +23,17 @@ class Attachment
 
     /// FACTORY METHODS
 
-    public static function fromUpload(FileUpload $file, string $name = null): self
+    public static function fromUpload(FileUpload $file, ?string $name = null): self
     {
         return new static($file->getContents(), $file->getContentType(), $name ?? $file->getUntrustedName());
     }
 
-    public static function fromPath(string $path, string $name = null): self
+    public static function fromPath(string $path, ?string $name = null): self
     {
         return self::fromFile(new \SplFileInfo($path), $name);
     }
 
-    public static function fromFile(\SplFileInfo $file, string $name = null): self
+    public static function fromFile(\SplFileInfo $file, ?string $name = null): self
     {
         $path = $file->getPathname();
 
@@ -56,10 +53,10 @@ class Attachment
 
     public function getName(): string
     {
-        return $this->name;
+        return $this->name ?? '';
     }
 
-    public function setName(string $name): void
+    public function setName(?string $name): void
     {
         $this->name = $name;
     }

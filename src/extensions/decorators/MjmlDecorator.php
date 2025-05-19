@@ -7,8 +7,7 @@ use Varhall\Mailino\Entities\IMail;
 
 class MjmlDecorator extends MailDecorator
 {
-    /** @var RendererInterface */
-    protected $mjml;
+    protected RendererInterface $mjml;
 
     public function __construct(IMail $mail, RendererInterface $mjml)
     {

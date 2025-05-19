@@ -8,8 +8,7 @@ use Varhall\Mailino\Extensions\IExtension;
 
 abstract class MailDecorator implements IMail
 {
-    /** @var IMail */
-    protected $mail;
+    protected IMail $mail;
 
 
     public function __construct(IMail $mail)
@@ -22,7 +21,7 @@ abstract class MailDecorator implements IMail
         return $this->mail->getFrom();
     }
 
-    public function setFrom(string $email, string $name = null): IMail
+    public function setFrom(string $email, ?string $name = null): IMail
     {
         $this->mail->setFrom($email, $name);
         return $this;
@@ -33,7 +32,7 @@ abstract class MailDecorator implements IMail
         return $this->mail->getSubject();
     }
 
-    public function setSubject(string $subject, string $prefix = null): IMail
+    public function setSubject(string $subject, ?string $prefix = null): IMail
     {
         $this->mail->setSubject($subject, $prefix);
         return $this;
@@ -76,7 +75,7 @@ abstract class MailDecorator implements IMail
         return $this->mail->getTo();
     }
 
-    public function addTo(string $email, string $name = null): IMail
+    public function addTo(string $email, ?string $name = null): IMail
     {
         $this->mail->addTo($email, $name);
         return $this;
@@ -87,7 +86,7 @@ abstract class MailDecorator implements IMail
         return $this->mail->getCc();
     }
 
-    public function addCc(string $email, string $name = null): IMail
+    public function addCc(string $email, ?string $name = null): IMail
     {
         $this->mail->addCc($email);
         return $this;
@@ -98,7 +97,7 @@ abstract class MailDecorator implements IMail
         return $this->mail->getBcc();
     }
 
-    public function addBcc(string $email, string $name = null): IMail
+    public function addBcc(string $email, ?string $name = null): IMail
     {
         $this->mail->addBcc($email);
         return $this;
@@ -109,7 +108,7 @@ abstract class MailDecorator implements IMail
         return $this->mail->getFiles();
     }
 
-    public function addFile($file, string $name = null): IMail
+    public function addFile($file, ?string $name = null): IMail
     {
         $this->mail->addFile($file, $name);
         return $this;

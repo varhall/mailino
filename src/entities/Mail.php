@@ -10,32 +10,23 @@ use Varhall\Mailino\Extensions\IExtension;
 
 class Mail implements IMail
 {
-    /** @var Container */
-    protected $container;
+    protected Container $container;
 
-    /** @var Engine */
-    protected $latte;
+    protected Engine $latte;
 
-    /** @var string */
-    protected $path;
+    protected string $path;
 
-    /** @var string */
     protected $template;
 
-    /** @var array */
-    protected $data = [];
+    protected array $data = [];
 
-    /** @var string */
-    protected $subject;
+    protected string $subject;
 
-    /** @var Recipient */
-    protected $from;
+    protected Recipient $from;
 
-    /** @var array */
-    protected $recipients = [];
+    protected array $recipients = [];
 
-    /** @var array */
-    protected $files = [];
+    protected array $files = [];
 
 
     public function __construct(Engine $latte, Container $container, string $path)
@@ -50,7 +41,7 @@ class Mail implements IMail
         return $this->from;
     }
 
-    public function setFrom(string $email, string $name = null): IMail
+    public function setFrom(string $email, ?string $name = null): IMail
     {
         $this->from = new Recipient($email, $name);
         return $this;
@@ -104,7 +95,7 @@ class Mail implements IMail
         return $this->getRecipients('to');
     }
 
-    public function addTo(string $email, string $name = null): IMail
+    public function addTo(string $email, ?string $name = null): IMail
     {
         return $this->addRecipient('to', $email, $name);
     }
@@ -114,7 +105,7 @@ class Mail implements IMail
         return $this->getRecipients('cc');
     }
 
-    public function addCc(string $email, string $name = null): IMail
+    public function addCc(string $email, ?string $name = null): IMail
     {
         return $this->addRecipient('cc', $email, $name);
     }
@@ -124,7 +115,7 @@ class Mail implements IMail
         return $this->getRecipients('bcc');
     }
 
-    public function addBcc(string $email, string $name = null): IMail
+    public function addBcc(string $email, ?string $name = null): IMail
     {
         return $this->addRecipient('bcc', $email, $name);
     }
@@ -134,7 +125,7 @@ class Mail implements IMail
         return $this->files;
     }
 
-    public function addFile($file, string $name = null): Mail
+    public function addFile($file, ?string $name = null): Mail
     {
         if ($file instanceof \Nette\Http\FileUpload) {
             $this->files[] = Attachment::fromUpload($file, $name);

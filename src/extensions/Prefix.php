@@ -8,8 +8,7 @@ use Varhall\Mailino\Extensions\Decorators\PrefixDecorator;
 
 class Prefix implements IExtension
 {
-    /** @var Config */
-    private $config;
+    private Config $config;
 
     public function __construct(Config $config)
     {
