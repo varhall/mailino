@@ -42,6 +42,24 @@ interface IMail
 
     public function addFile($file, ?string $name = null): IMail;
 
+    public function getReplyTo(): array;
+
+    public function addReplyTo(string $email, ?string $name = null): IMail;
+
+    public function getReturnPath(): ?string;
+
+    public function setReturnPath(string $email): IMail;
+
+    public function getPriority(): ?int;
+
+    public function setPriority(int $priority): IMail;
+
+    public function getHeaders(): array;
+
+    public function getHeader(string $name): ?string;
+
+    public function addHeader(string $name, string $value): IMail;
+
     public function extend(string $class): IMail;
 
     public function getExtensionFactory(string $class): IExtension;

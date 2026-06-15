@@ -124,6 +124,64 @@ class MailTest extends ContainerTestCase
         Assert::contains('plain baz value', $mail->getPlainBody());
     }
 
+    public function testReplyTo()
+    {
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
+
+        $mail->addReplyTo('reply1@test.cz', 'Reply One');
+        $mail->addReplyTo('reply2@test.cz');
+
+        Assert::equal([
+            new Recipient('reply1@test.cz', 'Reply One'),
+            new Recipient('reply2@test.cz'),
+        ], $mail->getReplyTo());
+    }
+
+    public function testReturnPath()
+    {
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
+
+        Assert::null($mail->getReturnPath());
+
+        $mail->setReturnPath('bounce@test.cz');
+        Assert::equal('bounce@test.cz', $mail->getReturnPath());
+    }
+
+    public function testPriority()
+    {
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
+
+        Assert::null($mail->getPriority());
+
+        $mail->setPriority(1);
+        Assert::equal(1, $mail->getPriority());
+    }
+
+    public function testHeaders()
+    {
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
+
+        Assert::equal([], $mail->getHeaders());
+        Assert::null($mail->getHeader('X-Custom'));
+
+        $mail->addHeader('X-Custom', 'value1');
+        $mail->addHeader('X-Another', 'value2');
+
+        Assert::equal('value1', $mail->getHeader('X-Custom'));
+        Assert::equal('value2', $mail->getHeader('X-Another'));
+        Assert::equal(['X-Custom' => 'value1', 'X-Another' => 'value2'], $mail->getHeaders());
+    }
+
+    public function testHeaders_Overwrite()
+    {
+        $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');
+
+        $mail->addHeader('X-Custom', 'first');
+        $mail->addHeader('X-Custom', 'second');
+
+        Assert::equal('second', $mail->getHeader('X-Custom'));
+    }
+
     public function testExtend_Single()
     {
         $mail = new Mail($this->getEngine(), $this->getContainer(), FIXTURES_DIR . '/templates');

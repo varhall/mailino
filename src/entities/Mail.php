@@ -28,6 +28,12 @@ class Mail implements IMail
 
     protected array $files = [];
 
+    protected ?string $returnPath = null;
+
+    protected ?int $priority = null;
+
+    protected array $headers = [];
+
 
     public function __construct(Engine $latte, Container $container, string $path)
     {
@@ -140,6 +146,54 @@ class Mail implements IMail
             throw new NotSupportedException('Unsupported attachment type');
         }
 
+        return $this;
+    }
+
+    public function getReplyTo(): array
+    {
+        return $this->getRecipients('replyTo');
+    }
+
+    public function addReplyTo(string $email, ?string $name = null): IMail
+    {
+        return $this->addRecipient('replyTo', $email, $name);
+    }
+
+    public function getReturnPath(): ?string
+    {
+        return $this->returnPath;
+    }
+
+    public function setReturnPath(string $email): IMail
+    {
+        $this->returnPath = $email;
+        return $this;
+    }
+
+    public function getPriority(): ?int
+    {
+        return $this->priority;
+    }
+
+    public function setPriority(int $priority): IMail
+    {
+        $this->priority = $priority;
+        return $this;
+    }
+
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+
+    public function getHeader(string $name): ?string
+    {
+        return $this->headers[$name] ?? null;
+    }
+
+    public function addHeader(string $name, string $value): IMail
+    {
+        $this->headers[$name] = $value;
         return $this;
     }
 

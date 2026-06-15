@@ -114,6 +114,55 @@ abstract class MailDecorator implements IMail
         return $this;
     }
 
+    public function getReplyTo(): array
+    {
+        return $this->mail->getReplyTo();
+    }
+
+    public function addReplyTo(string $email, ?string $name = null): IMail
+    {
+        $this->mail->addReplyTo($email, $name);
+        return $this;
+    }
+
+    public function getReturnPath(): ?string
+    {
+        return $this->mail->getReturnPath();
+    }
+
+    public function setReturnPath(string $email): IMail
+    {
+        $this->mail->setReturnPath($email);
+        return $this;
+    }
+
+    public function getPriority(): ?int
+    {
+        return $this->mail->getPriority();
+    }
+
+    public function setPriority(int $priority): IMail
+    {
+        $this->mail->setPriority($priority);
+        return $this;
+    }
+
+    public function getHeaders(): array
+    {
+        return $this->mail->getHeaders();
+    }
+
+    public function getHeader(string $name): ?string
+    {
+        return $this->mail->getHeader($name);
+    }
+
+    public function addHeader(string $name, string $value): IMail
+    {
+        $this->mail->addHeader($name, $value);
+        return $this;
+    }
+
     public function extend(string $class): IMail
     {
         return $this->getExtensionFactory($class)->extend($this);

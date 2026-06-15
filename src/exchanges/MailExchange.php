@@ -56,6 +56,22 @@ class MailExchange extends Exchange
                 $message->addAttachment($file->getName(), $file->getContent(), $file->getContentType());
             }
 
+            foreach ($mail->getReplyTo() as $recipient) {
+                $message->addReplyTo($recipient->getEmail(), $recipient->getName());
+            }
+
+            if ($mail->getReturnPath() !== null) {
+                $message->setReturnPath($mail->getReturnPath());
+            }
+
+            if ($mail->getPriority() !== null) {
+                $message->setPriority($mail->getPriority());
+            }
+
+            foreach ($mail->getHeaders() as $name => $value) {
+                $message->setHeader($name, $value);
+            }
+
             if (!$this->verifySsl)
                 $this->disableSSLVerification();
 
