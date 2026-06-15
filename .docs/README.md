@@ -27,9 +27,26 @@ Configure mail server settings and enable Mailino extension. The configuration c
 
     mailino:
         template_dir: %appDir%/templates/emails/
-        sender:
+
+        # Required: default sender applied to every email
+        from:
             email: 'sender@test.com'
             name: 'Sender'
+
+        # Optional: global Reply-To address (e.g. a no-reply inbox)
+        reply_to:
+            email: 'noreply@test.com'
+            name: 'No Reply'
+
+        # Optional: envelope Return-Path for bounces
+        return_path: 'bounce@test.com'
+
+        # Optional: X-Priority header (1=High, 3=Normal, 5=Low)
+        priority: 3
+
+        # Optional: custom headers added to every email
+        headers:
+            X-Mailer-Tag: 'registration'
 
         extensions:
             prefix:
@@ -41,6 +58,28 @@ Configure mail server settings and enable Mailino extension. The configuration c
     
             mjml.binary:
                 binary: '%appDir%/../node_modules/.bin/mjml'
+
+<a name="configuration-reference"></a>
+## Configuration Reference
+
+| Key | Required | Type | Description |
+|-----|----------|------|-------------|
+| `template_dir` | yes | string | Base directory for Latte template files |
+| `from.email` | yes | string | Default sender email |
+| `from.name` | no | string | Default sender display name |
+| `reply_to.email` | no | string | Global Reply-To address (e.g. a no-reply inbox) |
+| `reply_to.name` | no | string | Global Reply-To display name |
+| `return_path` | no | string | Envelope Return-Path for bounce handling |
+| `priority` | no | int | X-Priority (1 = High, 3 = Normal, 5 = Low) |
+| `headers` | no | array | Custom headers added to every email (key: value) |
+| `extensions` | no | array | Extension-specific configuration (prefix, mjml.*) |
+
+Global defaults (`reply_to`, `return_path`, `priority`, `headers`) are applied automatically by `Mailino::create()` but can be overridden on any individual mail object:
+
+    $mail = $this->mailino->create('accounts/register', $data)
+        ->setReturnPath('custom-bounce@test.com')   // overrides global
+        ->addReplyTo('support@company.com')         // appends to global
+        ->setPriority(1);                           // overrides global
 
 <a name="basic-usage"></a>
 ## Basic Usage

@@ -12,11 +12,43 @@ require_once __DIR__ . '/../bootstrap.php';
 
 class ConfigTest extends ContainerTestCase
 {
-    public function testGetValue_Valid()
+    public function testFrom()
     {
         $config = $this->getContainer()->getByType(Config::class);
 
-        Assert::equal((object)[ 'email' => 'sender@test.com', 'name' => 'Sender' ], $config->getValue('sender'));
+        $from = $config->getValue('from');
+        Assert::equal('sender@test.com', $from->email);
+        Assert::equal('Sender', $from->name);
+    }
+
+    public function testReplyTo()
+    {
+        $config = $this->getContainer()->getByType(Config::class);
+
+        $replyTo = $config->getValue('reply_to');
+        Assert::equal('noreply@test.com', $replyTo->email);
+        Assert::equal('No Reply', $replyTo->name);
+    }
+
+    public function testReturnPath()
+    {
+        $config = $this->getContainer()->getByType(Config::class);
+
+        Assert::equal('bounce@test.com', $config->getValue('return_path'));
+    }
+
+    public function testPriority()
+    {
+        $config = $this->getContainer()->getByType(Config::class);
+
+        Assert::equal(3, $config->getValue('priority'));
+    }
+
+    public function testHeaders()
+    {
+        $config = $this->getContainer()->getByType(Config::class);
+
+        Assert::equal(['X-Custom' => 'test-value'], $config->getValue('headers'));
     }
 
     public function testGetValue_Invalid()

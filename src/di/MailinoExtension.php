@@ -16,12 +16,22 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
     public function getConfigSchema(): Schema
     {
         return Expect::structure([
-            'template_dir'      => Expect::string()->required(),
-            'sender'            => Expect::structure([
-                'email'             => Expect::email()->required(),
-                'name'              => Expect::string()->required()
-            ]),
-            'extensions'        => Expect::array()
+            'template_dir'  => Expect::string()->required(),
+            'from'          => Expect::structure([
+                'email'         => Expect::email()->required(),
+                'name'          => Expect::string()->nullable()->default(null),
+            ])->required(),
+            'reply_to'      => Expect::anyOf(
+                null,
+                Expect::structure([
+                    'email'         => Expect::email()->required(),
+                    'name'          => Expect::string()->nullable()->default(null),
+                ])->castTo('object')
+            )->default(null),
+            'return_path'   => Expect::email()->nullable()->default(null),
+            'priority'      => Expect::int()->nullable()->default(null),
+            'headers'       => Expect::array()->default([]),
+            'extensions'    => Expect::array()->default([]),
         ]);
     }
 

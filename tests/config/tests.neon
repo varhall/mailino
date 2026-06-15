@@ -6,9 +6,16 @@ extensions:
 
 mailino:
 	template_dir: %appDir%/../tests/fixtures/templates/
-	sender:
+	from:
 		email: 'sender@test.com'
 		name: 'Sender'
+	reply_to:
+		email: 'noreply@test.com'
+		name: 'No Reply'
+	return_path: 'bounce@test.com'
+	priority: 3
+	headers:
+		X-Custom: 'test-value'
 	extensions:
 		prefix:
 			subject: 'TST'
