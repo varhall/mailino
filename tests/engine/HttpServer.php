@@ -16,7 +16,7 @@ class HttpServer
     {
         for ($attempt = 0; $attempt < 5; $attempt++) {
             $this->port = random_int(20000, 60000);
-            $command = [ PHP_BINARY, '-S', "127.0.0.1:{$this->port}", $router ];
+            $command = [ Php::binary(), '-S', "127.0.0.1:{$this->port}", $router ];
             $this->process = proc_open($command, [ 1 => [ 'file', '/dev/null', 'w' ], 2 => [ 'file', '/dev/null', 'w' ] ], $pipes);
 
             if ($this->waitForStart()) {

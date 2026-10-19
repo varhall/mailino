@@ -96,7 +96,8 @@ class MjmlBinaryRenderer implements RendererInterface
             }
 
             foreach ($write as $pipe) {
-                $written = fwrite($pipe, $input);
+                // process may exit before reading whole input (error), its exit code is reported below
+                $written = @fwrite($pipe, $input);
                 $input = $written === false ? '' : substr($input, $written);
 
                 if ($input === '') {

@@ -6,6 +6,7 @@ use Qferrer\Mjml\Exception\ProcessException;
 use Qferrer\Mjml\RendererInterface;
 use Tester\Assert;
 use Tests\Engine\BaseTestCase;
+use Tests\Engine\Php;
 use Varhall\Mailino\Entities\Mail;
 use Varhall\Mailino\Extensions\Decorators\MjmlDecorator;
 use Varhall\Mailino\Extensions\Mjml\MjmlBinaryRenderer;
@@ -55,7 +56,7 @@ class MjmlDecoratorTest extends BaseTestCase
         $mail = \Mockery::mock(Mail::class);
         $mail->shouldReceive('getHtmlBody')->andReturn('<mjml><mj-body>Hello</mj-body></mjml>');
 
-        $binary = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(FIXTURES_DIR . '/mjml-binary.php');
+        $binary = escapeshellarg(Php::binary()) . ' ' . escapeshellarg(FIXTURES_DIR . '/mjml-binary.php');
         $decorator = new MjmlDecorator($mail, new MjmlBinaryRenderer($binary));
 
         Assert::equal('<html><body>Hello</body></html>', $decorator->getHtmlBody());
@@ -66,7 +67,7 @@ class MjmlDecoratorTest extends BaseTestCase
         $mail = \Mockery::mock(Mail::class);
         $mail->shouldReceive('getHtmlBody')->andReturn('<mjml><mj-invalid/></mjml>');
 
-        $decorator = new MjmlDecorator($mail, new MjmlBinaryRenderer([ PHP_BINARY, FIXTURES_DIR . '/mjml-binary.php' ]));
+        $decorator = new MjmlDecorator($mail, new MjmlBinaryRenderer([ Php::binary(), FIXTURES_DIR . '/mjml-binary.php' ]));
 
         Assert::exception(fn() => $decorator->getHtmlBody(), ProcessException::class, '~mj-invalid~');
     }

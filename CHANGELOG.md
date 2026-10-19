@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `MjmlBinaryRenderer` emitted a "Broken pipe" notice when the MJML process exited before reading the whole input. The process error is reported instead.
+- CI code coverage uses PCOV instead of phpdbg, and tests start child PHP processes with the PHP CLI binary even when they run under phpdbg.
+
 ## 1.3.0 (2026-10-19)
 
 The last feature release of the 1.x line. It is maintained in the `v1.x` branch (bug fixes only). See [UPGRADE-2.0.md](UPGRADE-2.0.md) for the next major version.

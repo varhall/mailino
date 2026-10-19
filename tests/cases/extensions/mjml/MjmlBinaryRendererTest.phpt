@@ -5,6 +5,7 @@ namespace Tests\Mailino\Extensions\Mjml;
 use Qferrer\Mjml\Exception\ProcessException;
 use Tester\Assert;
 use Tests\Engine\BaseTestCase;
+use Tests\Engine\Php;
 use Varhall\Mailino\Extensions\Mjml\MjmlBinaryRenderer;
 
 require_once __DIR__ . '/../../../bootstrap.php';
@@ -13,7 +14,7 @@ class MjmlBinaryRendererTest extends BaseTestCase
 {
     private function command(): array
     {
-        return [ PHP_BINARY, FIXTURES_DIR . '/mjml-binary.php' ];
+        return [ Php::binary(), FIXTURES_DIR . '/mjml-binary.php' ];
     }
 
     public function testRender_Array()
