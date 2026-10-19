@@ -6,6 +6,7 @@ use Nette\DI\Container;
 use Varhall\Mailino\Entities\IMail;
 use Varhall\Mailino\Entities\Mail;
 use Varhall\Mailino\Entities\Preview;
+use Varhall\Mailino\Extensions\ExtensionRegistry;
 
 class Mailino
 {
@@ -15,18 +16,33 @@ class Mailino
 
     protected ILatteEngineFactory $latteFactory;
 
-    public function __construct(Config $config, ILatteEngineFactory $latteFactory, Container $container)
-    {
+    protected ?ExtensionRegistry $registry;
+
+    /**
+     * @param Container $container  deprecated, kept for BC - extensions are resolved by ExtensionRegistry
+     */
+    public function __construct(
+        Config $config,
+        ILatteEngineFactory $latteFactory,
+        Container $container,
+        ?ExtensionRegistry $registry = null
+    ) {
         $this->config = $config;
         $this->latteFactory = $latteFactory;
         $this->container = $container;
+        $this->registry = $registry;
     }
 
     public function create(string $template, array $data = []): IMail
     {
         $from = $this->config->getValue('from');
 
-        $mail = (new Mail($this->latteFactory->createLatte(), $this->container, $this->config->getValue('template_dir'), (bool) $this->config->getValue('strict')))
+        $mail = (new Mail(
+            $this->latteFactory->createLatte(),
+            $this->registry ?? $this->container,
+            $this->config->getValue('template_dir'),
+            (bool) $this->config->getValue('strict')
+        ))
             ->setTemplate($template)
             ->setData($data)
             ->setFrom($from->email, $from->name);

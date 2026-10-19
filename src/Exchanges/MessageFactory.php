@@ -3,55 +3,15 @@
 namespace Varhall\Mailino\Exchanges;
 
 use Nette\InvalidStateException;
-use Nette\Mail\Mailer;
 use Nette\Mail\Message;
 use Varhall\Mailino\Entities\IMail;
 
-class MailExchange extends Exchange
+/**
+ * Converts mail to Nette message (renders templates and applies extensions)
+ */
+class MessageFactory
 {
-    private Mailer $mailer;
-
-    public function __construct(Mailer $mailer)
-    {
-        $this->mailer = $mailer;
-    }
-
-    /**
-     * @deprecated SSL verification is always enabled, configure SMTP stream context instead (mail: context: ssl: ...)
-     */
-    public function isVerifySsl(): bool
-    {
-        return true;
-    }
-
-    /**
-     * @deprecated SSL verification is no longer disabled globally. To disable it for SMTP connection only,
-     *             configure stream context in Nette mail extension: mail: context: ssl: verify_peer: false
-     */
-    public function setVerifySsl(bool $verifySsl): void
-    {
-        if (!$verifySsl) {
-            trigger_error(__METHOD__ . '(false) has no effect, configure SSL options in SMTP stream context (mail: context: ssl: ...)', E_USER_DEPRECATED);
-        }
-    }
-
-    public function send(IMail $mail): void
-    {
-        $this->onSending($mail);
-
-        try {
-            $this->mailer->send($this->createMessage($mail));
-            $this->onSuccess($mail);
-        } catch (\Throwable $ex) {
-            $this->onError($mail, $ex);
-            throw $ex;
-        }
-    }
-
-    /**
-     * Converts mail to Nette message without sending it
-     */
-    public function createMessage(IMail $mail): Message
+    public function create(IMail $mail): Message
     {
         if (empty($mail->getTo()) && empty($mail->getCc()) && empty($mail->getBcc())) {
             throw new InvalidStateException('Mail has no recipients (to, cc or bcc)');

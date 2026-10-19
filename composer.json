@@ -41,6 +41,8 @@
 	},
 
 	"autoload": {
-		"classmap": [ "src/" ]
+		"psr-4": {
+			"Varhall\\Mailino\\": "src/"
+		}
 	}
 }

@@ -10,7 +10,7 @@ use Varhall\Mailino\Entities\IMail;
  * @method void onSuccess(IMail $mail)
  * @method void onError(IMail $mail, \Throwable $exception)
  */
-abstract class Exchange
+abstract class Exchange implements IExchange
 {
     use SmartObject;
 
@@ -24,4 +24,20 @@ abstract class Exchange
     public $onError     = [];
 
     abstract public function send(IMail $mail): void;
+
+    /**
+     * Runs delivery and triggers events, exception is re-thrown after onError handlers
+     */
+    protected function dispatch(IMail $mail, callable $delivery): void
+    {
+        $this->onSending($mail);
+
+        try {
+            $delivery();
+            $this->onSuccess($mail);
+        } catch (\Throwable $ex) {
+            $this->onError($mail, $ex);
+            throw $ex;
+        }
+    }
 }

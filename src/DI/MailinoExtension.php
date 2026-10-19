@@ -5,6 +5,9 @@ namespace Varhall\Mailino\DI;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Varhall\Mailino\Config;
+use Varhall\Mailino\Exchanges\MailExchange;
+use Varhall\Mailino\Extensions\ExtensionRegistry;
+use Varhall\Mailino\Extensions\IExtension;
 use Varhall\Mailino\Extensions\Mjml\MjmlHttpApi;
 use Varhall\Mailino\LatteEngineFactory;
 
@@ -51,6 +54,20 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
 
         $builder->addDefinition($this->prefix('config'))
                 ->setFactory(Config::class, [ $this->config ]);
+
+        // application may replace these services in its own configuration
+        if (!$builder->hasDefinition($this->prefix('template_factory'))) {
+            $builder->addDefinition($this->prefix('template_factory'))
+                    ->setFactory(LatteEngineFactory::class);
+        }
+
+        if (!$builder->hasDefinition($this->prefix('exchange'))) {
+            $builder->addDefinition($this->prefix('exchange'))
+                    ->setFactory(MailExchange::class);
+        }
+
+        $builder->addDefinition($this->prefix('registry'))
+                ->setFactory(ExtensionRegistry::class);
     }
 
     public function beforeCompile()
@@ -64,6 +81,15 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
         // configure default factory only, application may replace the service with own implementation
         if ($definition instanceof \Nette\DI\Definitions\ServiceDefinition && $definition->getType() === LatteEngineFactory::class) {
             $definition->setArguments([ $config->temp_dir ]);
+        }
+
+        // register all extension services (built-in and application ones) into registry
+        $registry = $builder->getDefinition($this->prefix('registry'));
+
+        if ($registry instanceof \Nette\DI\Definitions\ServiceDefinition) {
+            foreach (array_keys($builder->findByType(IExtension::class)) as $name) {
+                $registry->addSetup('add', [ '@' . $name ]);
+            }
         }
     }
 
@@ -84,7 +110,8 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
                 'validation_level'  => Expect::anyOf(MjmlHttpApi::VALIDATION_SOFT, MjmlHttpApi::VALIDATION_STRICT)->default(MjmlHttpApi::VALIDATION_SOFT),
             ]),
             'mjml.binary'   => $section([
-                'binary'            => Expect::string()->required(),
+                'binary'            => Expect::anyOf(Expect::string(), Expect::listOf('string'))->required(),
+                'timeout'           => Expect::int(30)->min(0),
             ]),
         ])->otherItems(Expect::array())->skipDefaults()->castTo('array');
     }

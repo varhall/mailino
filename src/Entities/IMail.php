@@ -25,10 +25,15 @@ interface IMail
 
     public function setTemplate(string $template): IMail;
 
+    /**
+     * @deprecated mail is rendered by renderer in 2.0, use Mailino::preview() to get rendered content
+     */
     public function getHtmlBody(): string;
 
     /**
      * Returns empty string when plain template does not exist (plain text is generated from HTML when sending)
+     *
+     * @deprecated mail is rendered by renderer in 2.0, use Mailino::preview() to get rendered content
      */
     public function getPlainBody(): string;
 

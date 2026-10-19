@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 (2026-10-19)
+
+The last feature release of the 1.x line. It is maintained in the `v1.x` branch (bug fixes only). See [UPGRADE-2.0.md](UPGRADE-2.0.md) for the next major version.
 
 ### Security
 - `MailExchange` no longer disables SSL certificate verification globally via `stream_context_set_default()`. Before this fix, sending a mail disabled verification for the whole PHP process. `setVerifySsl()` is deprecated and has no effect. To disable verification for SMTP only, configure `mail: context: ssl:` in Nette mail configuration.
@@ -17,6 +19,7 @@
 - `Recipient::setName()` accepts `null`.
 - MJML API requests had no timeout and could hang forever. The default is 30 s (connect 10 s).
 - `curl_close()` deprecation on PHP 8.5 when using MJML API.
+- The MJML binary renderer could deadlock when MJML wrote large output to stderr, and it had no timeout. It is replaced by an own `MjmlBinaryRenderer`, which reads stdout and stderr concurrently and kills the process after `timeout`.
 
 ### Added
 - `mjml.api` options: `url` (custom MJML API endpoint with the same contract as mjml.io), `timeout`, `connect_timeout`, `validation_level` (`soft` | `strict`).
@@ -34,6 +37,10 @@
 - `IMail::clearTo()`, `clearCc()`, `clearBcc()`, `clearReplyTo()`, `removeHeader()`.
 - `MjmlDecorator` caches rendered HTML, so repeated `getHtmlBody()` calls do not call MJML again.
 - Sending without any recipient throws `InvalidStateException` before calling the mailer.
+- `IExchange` interface, plus `NullExchange` (keeps messages in memory) and `LogExchange` (writes `.eml` files). The default exchange is the named service `mailino.exchange`, so it can be replaced in configuration.
+- `MessageFactory` converts `IMail` to `Nette\Mail\Message` and is shared by all exchanges.
+- `ExtensionRegistry` (service `mailino.registry`): all services implementing `IExtension` are registered automatically. Mails created by `Mailino` no longer hold the DI container.
+- `mjml.binary` options: `binary` accepts a list (command and arguments, executed without shell), and a new `timeout` option.
 
 ### Changed
 - Requires PHP 8.1+ (dependencies already required it). Dependency constraints changed from `>=` to `^`.
@@ -41,4 +48,13 @@
 - `Attachment` content type is detected from content (`finfo`), with `application/octet-stream` as a fallback.
 - Not registered extension class passed to `extend()` throws `InvalidArgumentException` instead of `MissingServiceException`.
 - PHPStan (level 6) added to QA and CI, plus a CI job with the lowest dependencies on PHP 8.1.
+- Autoloading switched from classmap to PSR-4 (directories renamed to `DI/`, `Entities/`, `Exchanges/`, `Extensions/`). Class names and namespaces are unchanged.
+- Services of the extension are named with its prefix (`mailino.exchange`, `mailino.registry`, `mailino.template_factory`), so the extension also works when it is registered under another name.
 - Coding standard switched from the abandoned `ninjify/qa` (`make cs` failed on newer phpcs) to PSR-12 (`phpcs.xml`, `squizlabs/php_codesniffer`). Code was reformatted: braces for all control structures, `elseif`, LF line endings enforced by `.gitattributes`. `make cs` runs in CI.
+
+### Deprecated (removed in 2.0)
+- `MailDecorator` and `IExtension::extend()`: extensions will process the rendered mail instead of decorating it.
+- `IMail::getHtmlBody()` / `getPlainBody()`: use `Mailino::preview()`.
+- Passing the DI container to `Mail` / `Mailino` constructors: extensions are resolved by `ExtensionRegistry`.
+- `MailExchange::setVerifySsl()` / `isVerifySsl()`.
+- URL as a path in `addFile()` / `Attachment::fromFile()`: use `Attachment::fromUrl()`.

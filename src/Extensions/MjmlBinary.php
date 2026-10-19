@@ -2,10 +2,10 @@
 
 namespace Varhall\Mailino\Extensions;
 
-use Qferrer\Mjml\Renderer\BinaryRenderer;
 use Varhall\Mailino\Config;
 use Varhall\Mailino\Entities\IMail;
 use Varhall\Mailino\Extensions\Decorators\MjmlDecorator;
+use Varhall\Mailino\Extensions\Mjml\MjmlBinaryRenderer;
 
 class MjmlBinary implements IExtension
 {
@@ -19,7 +19,7 @@ class MjmlBinary implements IExtension
     public function extend(IMail $mail): IMail
     {
         $config = $this->config->getExtension('mjml.binary');
-        $mjml = new BinaryRenderer($config['binary']);
+        $mjml = new MjmlBinaryRenderer($config['binary'], $config['timeout'] ?? 30);
 
         return new MjmlDecorator($mail, $mjml);
     }

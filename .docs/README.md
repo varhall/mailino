@@ -17,6 +17,7 @@
   - [Default extensions](#default-extensions)
   - [Custom extension](#custom-extension)
 - [Preview](#preview)
+- [Exchanges](#exchanges)
 - [Events](#events)
 - [SSL verification](#ssl-verification)
 
@@ -129,13 +130,13 @@ This very simple example shows, how to define mail service and send email using 
     namespace App\Services;
 
     use Varhall\Mailino\Mailino;
-    use Varhall\Mailino\Exchanges\MailExchange;
+    use Varhall\Mailino\Exchanges\IExchange;
 
     class EmailsService
     {
         public function __construct(
             private Mailino $mailino,
-            private MailExchange $exchange,
+            private IExchange $exchange,
         ) {}
 
         public function send()
@@ -324,6 +325,14 @@ Extension is then used by:
                         ->extend(MjmlBinary::class)
                         ->setSubject('Welcome aboard');
 
+Binary can be a path (string, executed by shell, so e.g. `npx mjml` works) or a list of command and arguments (executed directly without shell). The process is killed after `timeout` seconds (default 30, 0 = no limit).
+
+    mailino:
+        extensions:
+            mjml.binary:
+                binary: [ node, '%appDir%/../node_modules/mjml/bin/mjml' ]
+                timeout: 10
+
 Local MJML binary requires Node. Installation can be simply done using
 
     npm install mjml
@@ -370,7 +379,7 @@ Extension consists of factory implementing `IExtension` and decorator extending 
         }
     }
 
-The factory must be registered as a service, its configuration is placed in `extensions` section:
+The factory must be registered as a service. All services implementing `IExtension` are registered into `ExtensionRegistry` automatically. Its configuration is placed in `extensions` section:
 
     services:
         - App\Mail\Footer
@@ -390,6 +399,22 @@ Mail can be rendered without sending, e.g. for preview in administration. Plain 
     $preview->getSubject();
     $preview->getHtmlBody();
     $preview->getPlainBody();
+
+<a name="exchanges"></a>
+## Exchanges
+
+Exchange sends the mail. All exchanges implement `Varhall\Mailino\Exchanges\IExchange` and support [events](#events).
+
+| Exchange | Description |
+|----------|-------------|
+| `MailExchange` | Sends mail using Nette `Mailer` (default, service `mailino.exchange`) |
+| `LogExchange` | Writes mails as `.eml` files into directory instead of sending (development, staging) |
+| `NullExchange` | Sends nothing, keeps rendered messages in memory, `getMessages()` (tests) |
+
+Type your dependencies with `IExchange` and replace the default service in configuration, e.g. for development:
+
+    services:
+        mailino.exchange: Varhall\Mailino\Exchanges\LogExchange(%tempDir%/mails)
 
 <a name="events"></a>
 ## Events

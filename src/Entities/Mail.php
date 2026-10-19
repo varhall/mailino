@@ -8,13 +8,17 @@ use Nette\DI\Container;
 use Nette\InvalidArgumentException;
 use Nette\InvalidStateException;
 use Nette\NotSupportedException;
+use Varhall\Mailino\Extensions\ExtensionRegistry;
 use Varhall\Mailino\Extensions\IExtension;
 
 class Mail implements IMail
 {
     public const SUBJECT_BLOCK = 'subject';
 
-    protected Container $container;
+    /** @deprecated extensions are resolved by $registry, container is kept only for mails created directly with it */
+    protected ?Container $container = null;
+
+    protected ?ExtensionRegistry $registry = null;
 
     protected Engine $latte;
 
@@ -44,12 +48,19 @@ class Mail implements IMail
 
 
     /**
+     * @param ExtensionRegistry|Container $extensions  passing DI container is deprecated, use ExtensionRegistry
      * @param bool $strict  throw exception on warnings (e.g. undefined variable) during template rendering
      */
-    public function __construct(Engine $latte, Container $container, string $path, bool $strict = false)
+    public function __construct(Engine $latte, ExtensionRegistry|Container $extensions, string $path, bool $strict = false)
     {
         $this->latte = $latte;
-        $this->container = $container;
+
+        if ($extensions instanceof ExtensionRegistry) {
+            $this->registry = $extensions;
+        } else {
+            $this->container = $extensions;
+        }
+
         $this->path = $path;
         $this->strict = $strict;
     }
@@ -272,7 +283,12 @@ class Mail implements IMail
      */
     public function getExtensionFactory(string $class): IExtension
     {
-        $factory = $this->container->getByType($class, false);
+        if ($this->registry !== null) {
+            return $this->registry->get($class);
+        }
+
+        // legacy - mail created with DI container
+        $factory = $this->container?->getByType($class, false);
 
         if ($factory === null) {
             throw new InvalidArgumentException("Mail extension '{$class}' is not registered as a service in DI container");

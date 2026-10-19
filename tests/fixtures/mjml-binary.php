@@ -9,4 +9,18 @@ if (str_contains($mjml, '<mj-invalid')) {
     exit(1);
 }
 
+if (str_contains($mjml, '<mj-sleep')) {
+    sleep(10);
+}
+
+if (str_contains($mjml, '<mj-args')) {
+    echo implode(' ', array_slice($argv, 1));
+    exit(0);
+}
+
+if (str_contains($mjml, '<mj-noisy')) {
+    // large stderr output (warnings) together with large stdout
+    fwrite(STDERR, str_repeat('warning ', 200000));
+}
+
 echo '<html><body>' . strip_tags($mjml) . '</body></html>';

@@ -6,6 +6,9 @@ use Varhall\Mailino\Entities\IMail;
 use Varhall\Mailino\Entities\Recipient;
 use Varhall\Mailino\Extensions\IExtension;
 
+/**
+ * @deprecated decorators are replaced by extension pipeline in 2.0, see UPGRADE-2.0.md
+ */
 abstract class MailDecorator implements IMail
 {
     protected IMail $mail;
