@@ -1,22 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Extensions;
 
 use Varhall\Mailino\Config;
-use Varhall\Mailino\Entities\IMail;
-use Varhall\Mailino\Extensions\Decorators\PrefixDecorator;
+use Varhall\Mailino\Rendering\RenderedMail;
 
+/**
+ * Adds prefix to subject - "[PREFIX] subject" (configuration section "prefix")
+ */
 class Prefix implements IExtension
 {
-    private Config $config;
-
-    public function __construct(Config $config)
-    {
-        $this->config = $config;
+    public function __construct(
+        private readonly Config $config
+    ) {
     }
 
-    public function extend(IMail $mail): IMail
+    public function process(RenderedMail $mail): RenderedMail
     {
-        return new PrefixDecorator($mail, $this->config->getExtension('prefix'));
+        $prefix = (string) ($this->config->getExtension('prefix')['subject'] ?? '');
+
+        if ($prefix === '' || str_starts_with($mail->getSubject(), "[{$prefix}] ")) {
+            return $mail;
+        }
+
+        return $mail->withSubject(trim("[{$prefix}] {$mail->getSubject()}"));
     }
 }

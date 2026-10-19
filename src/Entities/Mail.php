@@ -1,229 +1,245 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Entities;
 
-use Latte\ContentType;
-use Latte\Engine;
-use Nette\DI\Container;
-use Nette\InvalidArgumentException;
-use Nette\InvalidStateException;
-use Nette\NotSupportedException;
-use Varhall\Mailino\Extensions\ExtensionRegistry;
-use Varhall\Mailino\Extensions\IExtension;
+use Nette\Http\FileUpload;
 
-class Mail implements IMail
+/**
+ * Mail definition - template, data, recipients, attachments, headers and extensions.
+ * Holds data only (no DI container, no template engine), rendering is done by MailRenderer.
+ */
+class Mail
 {
-    public const SUBJECT_BLOCK = 'subject';
+    protected string $template;
 
-    /** @deprecated extensions are resolved by $registry, container is kept only for mails created directly with it */
-    protected ?Container $container = null;
-
-    protected ?ExtensionRegistry $registry = null;
-
-    protected Engine $latte;
-
-    protected string $path;
-
-    protected bool $strict;
-
-    protected string $template = '';
-
-    protected array $data = [];
+    /** @var array<string, mixed> */
+    protected array $data;
 
     protected ?string $subject = null;
 
     protected ?Recipient $from = null;
 
-    protected array $recipients = [];
+    /** @var list<Recipient> */
+    protected array $to = [];
 
+    /** @var list<Recipient> */
+    protected array $cc = [];
+
+    /** @var list<Recipient> */
+    protected array $bcc = [];
+
+    /** @var list<Recipient> */
+    protected array $replyTo = [];
+
+    /** @var list<Attachment> */
     protected array $files = [];
 
     protected ?string $returnPath = null;
 
     protected ?int $priority = null;
 
+    /** @var array<string, string> */
     protected array $headers = [];
 
     protected ?string $basePath = null;
 
+    /** @var list<class-string> */
+    protected array $extensions = [];
+
 
     /**
-     * @param ExtensionRegistry|Container $extensions  passing DI container is deprecated, use ExtensionRegistry
-     * @param bool $strict  throw exception on warnings (e.g. undefined variable) during template rendering
+     * @param string $template  template path relative to template directory, without extension
+     * @param array<string, mixed> $data  template parameters
      */
-    public function __construct(Engine $latte, ExtensionRegistry|Container $extensions, string $path, bool $strict = false)
+    public function __construct(string $template, array $data = [])
     {
-        $this->latte = $latte;
-
-        if ($extensions instanceof ExtensionRegistry) {
-            $this->registry = $extensions;
-        } else {
-            $this->container = $extensions;
-        }
-
-        $this->path = $path;
-        $this->strict = $strict;
-    }
-
-    public function getFrom(): Recipient
-    {
-        if ($this->from === null) {
-            throw new InvalidStateException('Sender (from) is not set');
-        }
-
-        return $this->from;
-    }
-
-    public function setFrom(string $email, ?string $name = null): IMail
-    {
-        $this->from = new Recipient($email, $name);
-        return $this;
-    }
-
-    public function getSubject(): string
-    {
-        return $this->subject ?? $this->renderSubject();
-    }
-
-    public function setSubject(string $subject): IMail
-    {
-        $this->subject = $subject;
-        return $this;
-    }
-
-    public function getData(): array
-    {
-        return $this->data;
-    }
-
-    public function setData(array $data): IMail
-    {
+        $this->template = $template;
         $this->data = $data;
-        return $this;
     }
 
-    public function getHtmlBody(): string
-    {
-        return $this->render($this->templatePath('html'), ContentType::Html);
-    }
 
-    public function getPlainBody(): string
-    {
-        $path = $this->templatePath('plain');
-
-        if (!is_file($path)) {
-            return '';
-        }
-
-        return $this->render($path, ContentType::Text);
-    }
+    /// TEMPLATE
 
     public function getTemplate(): string
     {
         return $this->template;
     }
 
-    public function setTemplate(string $template): IMail
+    public function setTemplate(string $template): static
     {
         $this->template = $template;
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getData(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function setData(array $data): static
+    {
+        $this->data = $data;
+        return $this;
+    }
+
+    /**
+     * Explicitly set subject. When null, subject is rendered from template
+     * ({define subject} block, <title> or <mj-title>).
+     */
+    public function getSubject(): ?string
+    {
+        return $this->subject;
+    }
+
+    public function setSubject(?string $subject): static
+    {
+        $this->subject = $subject;
+        return $this;
+    }
+
+
+    /// SENDER & RECIPIENTS
+
+    public function getFrom(): ?Recipient
+    {
+        return $this->from;
+    }
+
+    public function setFrom(string $email, ?string $name = null): static
+    {
+        $this->from = new Recipient($email, $name);
+        return $this;
+    }
+
+    /**
+     * @return list<Recipient>
+     */
     public function getTo(): array
     {
-        return $this->getRecipients('to');
+        return $this->to;
     }
 
-    public function addTo(string $email, ?string $name = null): IMail
+    public function addTo(string $email, ?string $name = null): static
     {
-        return $this->addRecipient('to', $email, $name);
+        $this->to[] = new Recipient($email, $name);
+        return $this;
     }
 
-    public function clearTo(): IMail
+    public function clearTo(): static
     {
-        return $this->clearRecipients('to');
+        $this->to = [];
+        return $this;
     }
 
+    /**
+     * @return list<Recipient>
+     */
     public function getCc(): array
     {
-        return $this->getRecipients('cc');
+        return $this->cc;
     }
 
-    public function addCc(string $email, ?string $name = null): IMail
+    public function addCc(string $email, ?string $name = null): static
     {
-        return $this->addRecipient('cc', $email, $name);
+        $this->cc[] = new Recipient($email, $name);
+        return $this;
     }
 
-    public function clearCc(): IMail
+    public function clearCc(): static
     {
-        return $this->clearRecipients('cc');
+        $this->cc = [];
+        return $this;
     }
 
+    /**
+     * @return list<Recipient>
+     */
     public function getBcc(): array
     {
-        return $this->getRecipients('bcc');
+        return $this->bcc;
     }
 
-    public function addBcc(string $email, ?string $name = null): IMail
+    public function addBcc(string $email, ?string $name = null): static
     {
-        return $this->addRecipient('bcc', $email, $name);
+        $this->bcc[] = new Recipient($email, $name);
+        return $this;
     }
 
-    public function clearBcc(): IMail
+    public function clearBcc(): static
     {
-        return $this->clearRecipients('bcc');
+        $this->bcc = [];
+        return $this;
     }
 
+    /**
+     * @return list<Recipient>
+     */
+    public function getReplyTo(): array
+    {
+        return $this->replyTo;
+    }
+
+    public function addReplyTo(string $email, ?string $name = null): static
+    {
+        $this->replyTo[] = new Recipient($email, $name);
+        return $this;
+    }
+
+    public function clearReplyTo(): static
+    {
+        $this->replyTo = [];
+        return $this;
+    }
+
+
+    /// ATTACHMENTS
+
+    /**
+     * @return list<Attachment>
+     */
     public function getFiles(): array
     {
         return $this->files;
     }
 
     /**
-     * @param mixed $file  string path, \SplFileInfo, \Nette\Http\FileUpload or Attachment
+     * @param Attachment|FileUpload|\SplFileInfo|string $file  attachment, upload or local file path (never user input)
      */
-    public function addFile($file, ?string $name = null): Mail
+    public function addFile(Attachment|FileUpload|\SplFileInfo|string $file, ?string $name = null): static
     {
-        if ($file instanceof Attachment) {
-            if ($name !== null) {
-                $file->setName($name);
-            }
-
-            $this->files[] = $file;
-        } elseif ($file instanceof \Nette\Http\FileUpload) {
-            $this->files[] = Attachment::fromUpload($file, $name);
-        } elseif (is_string($file)) {
-            $this->files[] = Attachment::fromPath($file, $name);
-        } elseif ($file instanceof \SplFileInfo) {
-            $this->files[] = Attachment::fromFile($file, $name);
-        } else {
-            throw new NotSupportedException('Unsupported attachment type');
-        }
+        $this->files[] = match (true) {
+            $file instanceof Attachment     => $name !== null ? $file->withName($name) : $file,
+            $file instanceof FileUpload     => Attachment::fromUpload($file, $name),
+            $file instanceof \SplFileInfo   => Attachment::fromFile($file, $name),
+            default                         => Attachment::fromPath($file, $name),
+        };
 
         return $this;
     }
 
-    public function getReplyTo(): array
+    public function clearFiles(): static
     {
-        return $this->getRecipients('replyTo');
+        $this->files = [];
+        return $this;
     }
 
-    public function addReplyTo(string $email, ?string $name = null): IMail
-    {
-        return $this->addRecipient('replyTo', $email, $name);
-    }
 
-    public function clearReplyTo(): IMail
-    {
-        return $this->clearRecipients('replyTo');
-    }
+    /// HEADERS
 
     public function getReturnPath(): ?string
     {
         return $this->returnPath;
     }
 
-    public function setReturnPath(string $email): IMail
+    public function setReturnPath(?string $email): static
     {
         $this->returnPath = $email;
         return $this;
@@ -234,12 +250,15 @@ class Mail implements IMail
         return $this->priority;
     }
 
-    public function setPriority(int $priority): IMail
+    public function setPriority(?int $priority): static
     {
         $this->priority = $priority;
         return $this;
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function getHeaders(): array
     {
         return $this->headers;
@@ -250,118 +269,72 @@ class Mail implements IMail
         return $this->headers[$name] ?? null;
     }
 
-    public function addHeader(string $name, string $value): IMail
+    public function addHeader(string $name, string $value): static
     {
         $this->headers[$name] = $value;
         return $this;
     }
 
-    public function removeHeader(string $name): IMail
+    public function removeHeader(string $name): static
     {
         unset($this->headers[$name]);
         return $this;
     }
 
+    /**
+     * Directory used to embed local images referenced in HTML body as inline attachments
+     */
     public function getBasePath(): ?string
     {
         return $this->basePath;
     }
 
-    public function setBasePath(?string $path): IMail
+    public function setBasePath(?string $path): static
     {
         $this->basePath = $path;
         return $this;
     }
 
-    public function extend(string $class): IMail
+
+    /// EXTENSIONS
+
+    /**
+     * Adds extension applied when mail is rendered. Extensions are applied in order they were added,
+     * adding the same extension again has no effect.
+     *
+     * @param class-string $class
+     */
+    public function extend(string $class): static
     {
-        return $this->getExtensionFactory($class)->extend($this);
+        if (!in_array($class, $this->extensions, true)) {
+            $this->extensions[] = $class;
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return list<class-string>
+     */
+    public function getExtensions(): array
+    {
+        return $this->extensions;
     }
 
     /**
      * @param class-string $class
      */
-    public function getExtensionFactory(string $class): IExtension
+    public function hasExtension(string $class): bool
     {
-        if ($this->registry !== null) {
-            return $this->registry->get($class);
-        }
-
-        // legacy - mail created with DI container
-        $factory = $this->container?->getByType($class, false);
-
-        if ($factory === null) {
-            throw new InvalidArgumentException("Mail extension '{$class}' is not registered as a service in DI container");
-        }
-
-        if (!($factory instanceof IExtension)) {
-            throw new InvalidArgumentException("Mail extension '{$class}' does not implement " . IExtension::class);
-        }
-
-        return $factory;
+        return in_array($class, $this->extensions, true);
     }
 
-
-    /// PRIVATE METHODS
-
-    protected function getRecipients(string $type): array
+    /**
+     * @param class-string $class
+     */
+    public function removeExtension(string $class): static
     {
-        return array_key_exists($type, $this->recipients) ? $this->recipients[$type] : [];
-    }
-
-    protected function addRecipient(string $type, string $email, ?string $name): IMail
-    {
-        $this->recipients[$type][] = new Recipient($email, $name);
+        $this->extensions = array_values(array_filter($this->extensions, fn(string $item) => $item !== $class));
         return $this;
-    }
-
-    protected function clearRecipients(string $type): IMail
-    {
-        unset($this->recipients[$type]);
-        return $this;
-    }
-
-    protected function templatePath(string $type): string
-    {
-        return implode(DIRECTORY_SEPARATOR, [ $this->path, "{$this->template}.{$type}.latte" ]);
-    }
-
-    protected function renderSubject(): string
-    {
-        $path = $this->templatePath('html');
-
-        if ($this->template === '' || !is_file($path)) {
-            return '';
-        }
-
-        $this->latte->setContentType(ContentType::Html);
-
-        if (!$this->latte->createTemplate($path, $this->data)->hasBlock(self::SUBJECT_BLOCK)) {
-            return '';
-        }
-
-        $subject = $this->render($path, ContentType::Html, self::SUBJECT_BLOCK);
-        $subject = html_entity_decode(strip_tags($subject), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        return trim((string) preg_replace('#\s+#u', ' ', $subject));
-    }
-
-    protected function render(string $path, string $contentType, ?string $block = null): string
-    {
-        $this->latte->setContentType($contentType);
-
-        if (!$this->strict) {
-            return $this->latte->renderToString($path, $this->data, $block);
-        }
-
-        set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
-            throw new \ErrorException($message, 0, $severity, $file, $line);
-        }, E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
-
-        try {
-            return $this->latte->renderToString($path, $this->data, $block);
-        } finally {
-            restore_error_handler();
-        }
     }
 }

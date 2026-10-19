@@ -1,7 +1,4 @@
 parameters:
-	level: 6
+	level: 8
 	paths:
 		- src
-	ignoreErrors:
-		# arrays of config values and template data are intentionally untyped
-		- identifier: missingType.iterableValue

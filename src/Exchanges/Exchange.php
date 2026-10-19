@@ -1,43 +1,52 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Exchanges;
 
 use Nette\SmartObject;
-use Varhall\Mailino\Entities\IMail;
+use Varhall\Mailino\Entities\Mail;
+use Varhall\Mailino\Rendering\MailRenderer;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 /**
- * @method void onSending(IMail $mail)
- * @method void onSuccess(IMail $mail)
- * @method void onError(IMail $mail, \Throwable $exception)
+ * Base exchange - renders mail, delivers it and triggers events
+ *
+ * @method void onSending(Mail $mail)
+ * @method void onSuccess(Mail $mail, RenderedMail $rendered)
+ * @method void onError(Mail $mail, \Throwable $exception)
  */
 abstract class Exchange implements IExchange
 {
     use SmartObject;
 
-    /** @var array<callable(IMail): void> */
-    public $onSending   = [];
+    /** @var array<callable(Mail): void> */
+    public array $onSending = [];
 
-    /** @var array<callable(IMail): void> */
-    public $onSuccess   = [];
+    /** @var array<callable(Mail, RenderedMail): void> */
+    public array $onSuccess = [];
 
-    /** @var array<callable(IMail, \Throwable): void> */
-    public $onError     = [];
+    /** @var array<callable(Mail, \Throwable): void> */
+    public array $onError = [];
 
-    abstract public function send(IMail $mail): void;
+    public function __construct(
+        protected readonly MailRenderer $renderer
+    ) {
+    }
 
-    /**
-     * Runs delivery and triggers events, exception is re-thrown after onError handlers
-     */
-    protected function dispatch(IMail $mail, callable $delivery): void
+    public function send(Mail $mail): void
     {
         $this->onSending($mail);
 
         try {
-            $delivery();
-            $this->onSuccess($mail);
+            $rendered = $this->renderer->render($mail);
+            $this->deliver($rendered);
+            $this->onSuccess($mail, $rendered);
         } catch (\Throwable $ex) {
             $this->onError($mail, $ex);
             throw $ex;
         }
     }
+
+    abstract protected function deliver(RenderedMail $mail): void;
 }

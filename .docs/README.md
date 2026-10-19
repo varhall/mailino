@@ -4,6 +4,7 @@
 - [Setup](#setup)
 - [Configuration Reference](#configuration-reference)
 - [Basic usage](#basic-usage)
+- [How it works](#how-it-works)
 - [Templates](#templates)
   - [Subject](#subject)
   - [Plain text](#plain-text)
@@ -18,10 +19,13 @@
   - [Custom extension](#custom-extension)
 - [Preview](#preview)
 - [Exchanges](#exchanges)
+- [Queue](#queue)
 - [Events](#events)
 - [SSL verification](#ssl-verification)
 
 Mailino is Nette mailing extension to create modular structure of mail message and mailing exchanges.
+
+> {tip} Upgrading from 1.x? See [UPGRADE-2.0.md](../UPGRADE-2.0.md). Version 1.x is maintained in the `v1.x` branch.
 
 > {tip} Before getting started, be sure to have working Nette project and properly configured a mailing in your application's `config/local.neon` configuration file. For more information on configuring mailing, check out [the mailing documentation](https://doc.nette.org/en/mail).
 
@@ -81,7 +85,6 @@ Configure mail server settings and enable Mailino extension. The configuration c
             mjml.api:
                 id: 'abcdef-1234-5678-ghijkl'
                 secret: 'ghijkl-5678-1234-abcdef'
-                url: 'https://api.mjml.io/v1'     # optional, custom MJML API endpoint
     
             mjml.binary:
                 binary: '%appDir%/../node_modules/.bin/mjml'
@@ -103,55 +106,68 @@ Configure mail server settings and enable Mailino extension. The configuration c
 | `temp_dir` | no | string | Cache directory for compiled templates (default Latte factory only) |
 | `strict` | no | bool | Convert template warnings to exceptions, default `false` |
 | `default_extensions` | no | list | Extension classes applied to every mail created by `Mailino::create()` |
-| `extensions` | no | array | Extension-specific configuration (`prefix`, `mjml.api`, `mjml.binary`, custom) |
+| `extensions` | no | array | Extension configuration (`prefix`, `mjml.api`, `mjml.binary`, custom) |
 
 Configuration of built-in extensions is validated when DI container is compiled, so typo or missing required key is reported immediately. Custom extension sections are passed as they are.
 
-Global defaults (`reply_to`, `return_path`, `priority`, `headers`, `embed_dir`) are applied automatically by `Mailino::create()` but can be overridden on any individual mail object:
-
-    $mail = $this->mailino->create('accounts/register', $data)
-        ->setReturnPath('custom-bounce@test.com')   // overrides global
-        ->addReplyTo('support@company.com')         // appends to global
-        ->setPriority(1);                           // overrides global
-
-Recipients and headers can be removed again using `clearTo()`, `clearCc()`, `clearBcc()`, `clearReplyTo()` and `removeHeader($name)`.
-
 <a name="basic-usage"></a>
 ## Basic Usage
-Create an email object using Mailino factory first. This object is automatically configured from extension config. Sender is already defined. Then specify template file relative from `template_dir`. Template files are without extensions. Mailino will look for:
+
+Create mail using Mailino factory - sender and other defaults from configuration are already set. Template path is relative to `template_dir`, without extension. Mailino looks for:
 
 - %appDir%/templates/emails/accounts/register.html.latte
 - %appDir%/templates/emails/accounts/register.plain.latte (optional)
 
-This very simple example shows, how to define mail service and send email using Mailino.
+```php
+namespace App\Services;
 
-    <?php
+use Varhall\Mailino\Exchanges\IExchange;
+use Varhall\Mailino\Mailino;
 
-    namespace App\Services;
+class EmailsService
+{
+    public function __construct(
+        private Mailino $mailino,
+        private IExchange $exchange,
+    ) {}
 
-    use Varhall\Mailino\Mailino;
-    use Varhall\Mailino\Exchanges\IExchange;
-
-    class EmailsService
+    public function sendRegistration(string $email): void
     {
-        public function __construct(
-            private Mailino $mailino,
-            private IExchange $exchange,
-        ) {}
+        $mail = $this->mailino->create('accounts/register', [ 'email' => $email ])
+            ->setSubject('Welcome aboard')
+            ->addTo($email);
 
-        public function send()
-        {
-            $mail = $this->mailino->create('accounts/register', [ 'email' => 'karl.hermann@gmail.com', 'password' => '123456Ab+' ])
-                        ->setSubject('Welcome aboard')
-                        ->addTo('karl.hermann@gmail.com');
-
-            $this->exchange->send($mail);
-        }
+        $this->exchange->send($mail);
     }
+}
+```
+
+Global defaults (`reply_to`, `return_path`, `priority`, `headers`, `embed_dir`, `default_extensions`) can be overridden on any mail:
+
+```php
+$mail = $this->mailino->create('accounts/register', $data)
+    ->setReturnPath('custom-bounce@test.com')   // overrides global
+    ->addReplyTo('support@company.com')         // appends to global
+    ->setPriority(1);                           // overrides global
+```
+
+Recipients, attachments, headers and extensions can be removed using `clearTo()`, `clearCc()`, `clearBcc()`, `clearReplyTo()`, `clearFiles()`, `removeHeader($name)` and `removeExtension($class)`.
 
 Mail must have sender and at least one recipient (`to`, `cc` or `bcc`), otherwise `Nette\InvalidStateException` is thrown when sending.
 
-If you need Nette `Message` object without sending it (e.g. to store it or to send it by other mailer), use `MailExchange::createMessage($mail)`.
+<a name="how-it-works"></a>
+## How it works
+
+`Mail` holds data only (template, data, recipients, attachments, headers and extensions). It has no DI container or template engine, so it can be serialized and sent through a queue.
+
+When mail is sent (or previewed), `MailRenderer`:
+
+1. renders `*.html.latte` and optional `*.plain.latte` template,
+2. resolves subject,
+3. applies extensions in order they were added to the mail,
+4. generates plain text from final HTML when there is no plain template.
+
+The result is immutable `RenderedMail`, which is converted to `Nette\Mail\Message` by `MessageFactory` and delivered by exchange.
 
 <a name="templates"></a>
 ## Templates
@@ -159,25 +175,31 @@ If you need Nette `Message` object without sending it (e.g. to store it or to se
 <a name="subject"></a>
 ### Subject
 
-Subject can be defined directly in HTML template using `{define subject}` block. The block is not rendered into the body. Subject set by `setSubject()` always takes precedence.
+Subject is resolved in this order:
 
-    {define subject}Welcome aboard, {$name}{/define}
+1. subject set by `setSubject()`,
+2. `{define subject}` block of HTML template (not rendered into the body),
+3. `<title>` or `<mj-title>` of HTML template.
 
-    <p>Hello {$name}</p>
+```latte
+{define subject}Welcome aboard, {$name}{/define}
 
-If there is no subject at all, `<title>` of HTML body is used (e.g. `<mj-title>` in MJML templates).
+<p>Hello {$name}</p>
+```
 
 <a name="plain-text"></a>
 ### Plain text
 
-Plain text template `*.plain.latte` is optional. When it does not exist, plain text alternative is generated from HTML body automatically. Plain text template is rendered as text, so values are not HTML-escaped.
+Plain text template `*.plain.latte` is optional. When it does not exist, plain text alternative is generated from the final HTML body. Plain text template is rendered as text, so values are not HTML-escaped.
 
 <a name="embedded-images"></a>
 ### Embedded images
 
 When `embed_dir` is configured (or `setBasePath($dir)` is called on mail), local images referenced in HTML body are attached as inline attachments, so they are displayed even when email client blocks remote images.
 
-    <img src="logo.png">     {* embed_dir/logo.png is attached and src rewritten to cid: *}
+```latte
+<img src="logo.png">     {* embed_dir/logo.png is attached and src rewritten to cid: *}
+```
 
 <a name="latte-engine"></a>
 ### Latte engine
@@ -197,103 +219,58 @@ By default, missing template variable produces just PHP warning and email is sen
 <a name="attachments"></a>
 ## Attachments
 
-Files are attached using `addFile($file, $name = null)` method. Supported values are:
+```php
+use Varhall\Mailino\Entities\Attachment;
 
-    use Varhall\Mailino\Entities\Attachment;
+$mail->addFile('/path/to/file.pdf');                              // local file path
+$mail->addFile(new \SplFileInfo('/path/to/file.pdf'), 'name.pdf'); // local file
+$mail->addFile($fileUpload);                                       // Nette\Http\FileUpload
+$mail->addFile(Attachment::fromContent($pdf, 'invoice.pdf'));      // content in memory, type detected
+$mail->addFile(Attachment::fromUrl('https://example.com/a.pdf'));  // downloaded file
+```
 
-    $mail->addFile('/path/to/file.pdf');                              // local file path
-    $mail->addFile(new \SplFileInfo('/path/to/file.pdf'), 'name.pdf'); // local file
-    $mail->addFile($fileUpload);                                       // Nette\Http\FileUpload
-    $mail->addFile(Attachment::fromContent($pdf, 'invoice.pdf'));      // content in memory, type detected
-    $mail->addFile(Attachment::fromUrl('https://example.com/a.pdf'));  // downloaded file
-
-> {warning} Never pass user input as path or URL. It allows attaching arbitrary local files or requesting internal URLs (SSRF). Passing URL as path is deprecated, use `Attachment::fromUrl()` explicitly.
+> {warning} Never pass user input as path or URL. It allows attaching arbitrary local files or requesting internal URLs (SSRF). URLs are accepted only by `Attachment::fromUrl()`.
 
 <a name="extensions"></a>
 ## Extensions
 
-Mailino deliveres some extensions by default. These are used to extend `IMail` class. Mail is extended simply by calling `extend` method. These extensions can be arbitrarily combined, like shows the example below.
+Extensions transform rendered mail - subject, bodies, recipients or headers. They are added by `extend()` and applied in order they were added. Adding the same extension again has no effect.
 
-    <?php
+```php
+use Varhall\Mailino\Extensions\MjmlApi;
+use Varhall\Mailino\Extensions\Prefix;
 
-    use Varhall\Mailino\Extensions\Prefix;
-    use Varhall\Mailino\Extensions\MjmlApi;
-
-    $mail = $this->mailino->create('template', $data)
-                        ->extend(Prefix::class)
-                        ->extend(MjmlApi::class)
-                        ->setSubject('Welcome aboard');        
-
-> {warning} `extend()` returns **new** decorated object. Always use the returned value, otherwise the extension is not applied:
->
->     $mail->extend(Prefix::class);             // wrong - result is lost
->     $mail = $mail->extend(Prefix::class);     // correct
+$mail = $this->mailino->create('template', $data)
+    ->extend(MjmlApi::class)
+    ->extend(Prefix::class)
+    ->setSubject('Welcome aboard');
+```
 
 <a name="prefix"></a>
 ### Prefix
 
-Prefix extension adds prefix to subject so the emails are virtually subscribed and can be effectively sorted in email clients.
-
-Configuration is done through `prefix` section in Mailino configuration.
+Prefix extension adds prefix to subject so the emails can be effectively sorted in email clients. Configuration is done through `prefix` section.
 
     mailino:
         extensions:
             prefix:
                 subject: 'TST'
 
-Extension is then used by:
-
-    <?php
-    
-    use Varhall\Mailino\Extensions\Prefix;
-
-    $mail = $this->mailino->create('template', $data)
-                        ->extend(Prefix::class)
-                        ->setSubject('Welcome aboard');
-
-Current email will have subject `[TST] Welcome aboard`. Applying the extension more than once adds the prefix only once.
+Mail extended by `Prefix::class` will have subject `[TST] Welcome aboard`. Prefix is added only once.
 
 <a name="mjml"></a>
 ### MJML
 
-[MJML](https://mjml.io) is a markup language designed to reduce the pain of coding a responsive email. Its semantic syntax makes it easy and straightforward and its rich standard components library speeds up your development time and lightens your email codebase. MJML’s open-source engine generates high quality responsive HTML compliant with best practices.
-
-Mailino provides extension to simply use MJML in email templates. To compile MJML template you can use external API service or local binary service.
-
-There are two versions of MJML extension - API and Binary. Both provide the same functions, only their implementation differ. 
-
-MJML is written in `template.html.latte` and all `Latte` features can be used of course. Rendered HTML is cached per mail object, so calling `getHtmlBody()` repeatedly (e.g. in `onSending` event) does not call MJML again.
+[MJML](https://mjml.io) is a markup language designed to reduce the pain of coding a responsive email. MJML is written in `template.html.latte` and all Latte features can be used. To compile MJML you can use external API service (`MjmlApi`) or local binary (`MjmlBinary`).
 
 #### API
-
-MJML API extension requires API credentials to be configured in `mjml.api` section in Mailino configuration.
-
-    mailino:
-        extensions:
-            mjml.api:
-                id: 'abcdef-1234-5678-ghijkl'
-                secret: 'ghijkl-5678-1234-abcdef'
-
-Extension is then used by:
-
-    <?php
-    
-    use Varhall\Mailino\Extensions\MjmlApi;
-
-    $mail = $this->mailino->create('template', $data)
-                        ->extend(MjmlApi::class)
-                        ->setSubject('Welcome aboard');
-
-MJML credentials can be requested on https://mjml.io/api. 
-
-By default the official endpoint `https://api.mjml.io/v1` is used. Optional `url` option allows to use any custom (e.g. self-hosted) service with exactly the same contract as the official MJML API. The value is the base URL, `/render` is appended automatically and requests are authenticated using HTTP Basic auth with `id` and `secret`.
 
     mailino:
         extensions:
             mjml.api:
                 id: 'my-app'
                 secret: 'my-secret'
-                url: 'https://mjml.example.com/v1'     # requests are sent to https://mjml.example.com/v1/render
+                url: 'https://mjml.example.com/v1'     # optional, requests are sent to {url}/render
                 timeout: 10
                 validation_level: strict
 
@@ -301,31 +278,14 @@ By default the official endpoint `https://api.mjml.io/v1` is used. Optional `url
 |-----|----------|---------|-------------|
 | `id` | yes | | Application ID (Basic auth username) |
 | `secret` | yes | | Secret key (Basic auth password) |
-| `url` | no | `https://api.mjml.io/v1` | Base URL of MJML API |
+| `url` | no | `https://api.mjml.io/v1` | Base URL of MJML API, any service with the same contract as mjml.io can be used |
 | `timeout` | no | `30` | Total request timeout in seconds |
 | `connect_timeout` | no | `10` | Connection timeout in seconds |
-| `validation_level` | no | `soft` | `strict` throws `ApiException` when API reports MJML validation errors, `soft` ignores them |
+| `validation_level` | no | `soft` | `strict` throws `MjmlException` when API reports MJML validation errors |
+
+MJML API requires `curl` PHP extension. Credentials for the official API can be requested on https://mjml.io/api.
 
 #### Binary
-
-MJML Binary extension requires path to MJML CLI to be configured in `mjml.binary` section in Mailino configuration.
-
-    mailino:
-        extensions:
-            mjml.binary:
-                binary: '%appDir%/../node_modules/.bin/mjml'
-
-Extension is then used by:
-
-    <?php
-    
-    use Varhall\Mailino\Extensions\MjmlBinary;
-
-    $mail = $this->mailino->create('template', $data)
-                        ->extend(MjmlBinary::class)
-                        ->setSubject('Welcome aboard');
-
-Binary can be a path (string, executed by shell, so e.g. `npx mjml` works) or a list of command and arguments (executed directly without shell). The process is killed after `timeout` seconds (default 30, 0 = no limit).
 
     mailino:
         extensions:
@@ -333,14 +293,16 @@ Binary can be a path (string, executed by shell, so e.g. `npx mjml` works) or a 
                 binary: [ node, '%appDir%/../node_modules/mjml/bin/mjml' ]
                 timeout: 10
 
-Local MJML binary requires Node. Installation can be simply done using
+Binary can be a path (string, executed by shell, so e.g. `npx mjml` works) or a list of command and arguments (executed directly without shell). The process is killed after `timeout` seconds (default 30, 0 = no limit). Local MJML binary requires Node:
 
     npm install mjml
+
+Both extensions throw `Varhall\Mailino\Exceptions\MjmlException` when rendering fails.
 
 <a name="default-extensions"></a>
 ### Default extensions
 
-Extensions listed in `default_extensions` are applied to every mail created by `Mailino::create()`. It is useful e.g. for subject prefix on staging server.
+Extensions listed in `default_extensions` are added to every mail created by `Mailino::create()`, e.g. subject prefix on staging server.
 
     mailino:
         default_extensions:
@@ -349,37 +311,27 @@ Extensions listed in `default_extensions` are applied to every mail created by `
 <a name="custom-extension"></a>
 ### Custom extension
 
-Extension consists of factory implementing `IExtension` and decorator extending `MailDecorator`. Decorator overrides only methods it changes, all other calls are delegated to decorated mail.
+Extension implements `IExtension` and returns modified copy of `RenderedMail`:
 
-    use Varhall\Mailino\Config;
-    use Varhall\Mailino\Entities\IMail;
-    use Varhall\Mailino\Extensions\Decorators\MailDecorator;
-    use Varhall\Mailino\Extensions\IExtension;
+```php
+use Varhall\Mailino\Config;
+use Varhall\Mailino\Extensions\IExtension;
+use Varhall\Mailino\Rendering\RenderedMail;
 
-    class Footer implements IExtension
+class Footer implements IExtension
+{
+    public function __construct(private Config $config) {}
+
+    public function process(RenderedMail $mail): RenderedMail
     {
-        public function __construct(private Config $config) {}
+        $text = $this->config->getExtension('footer')['text'];
 
-        public function extend(IMail $mail): IMail
-        {
-            return new FooterDecorator($mail, $this->config->getExtension('footer')['text']);
-        }
+        return $mail->withHtmlBody($mail->getHtmlBody() . "<p>{$text}</p>");
     }
+}
+```
 
-    class FooterDecorator extends MailDecorator
-    {
-        public function __construct(IMail $mail, private string $text)
-        {
-            parent::__construct($mail);
-        }
-
-        public function getHtmlBody(): string
-        {
-            return parent::getHtmlBody() . "<p>{$this->text}</p>";
-        }
-    }
-
-The factory must be registered as a service. All services implementing `IExtension` are registered into `ExtensionRegistry` automatically. Its configuration is placed in `extensions` section:
+Register it as a service, all services implementing `IExtension` are registered into `ExtensionRegistry` automatically. Its configuration is placed in `extensions` section:
 
     services:
         - App\Mail\Footer
@@ -392,55 +344,88 @@ The factory must be registered as a service. All services implementing `IExtensi
 <a name="preview"></a>
 ## Preview
 
-Mail can be rendered without sending, e.g. for preview in administration. Plain text and subject are resolved the same way as when sending.
+Mail can be rendered without sending, e.g. for preview in administration:
 
-    $preview = $this->mailino->preview($mail);
+```php
+$rendered = $this->mailino->preview($mail);   // RenderedMail
 
-    $preview->getSubject();
-    $preview->getHtmlBody();
-    $preview->getPlainBody();
+$rendered->getSubject();
+$rendered->getHtmlBody();
+$rendered->getPlainBody();
+```
 
 <a name="exchanges"></a>
 ## Exchanges
 
-Exchange sends the mail. All exchanges implement `Varhall\Mailino\Exchanges\IExchange` and support [events](#events).
+Exchange sends the mail. All exchanges implement `Varhall\Mailino\Exchanges\IExchange`.
 
 | Exchange | Description |
 |----------|-------------|
 | `MailExchange` | Sends mail using Nette `Mailer` (default, service `mailino.exchange`) |
+| `QueueExchange` | Pushes mail into queue, see [Queue](#queue) |
 | `LogExchange` | Writes mails as `.eml` files into directory instead of sending (development, staging) |
-| `NullExchange` | Sends nothing, keeps rendered messages in memory, `getMessages()` (tests) |
+| `NullExchange` | Sends nothing, keeps messages in memory, `getMessages()` (tests) |
 
 Type your dependencies with `IExchange` and replace the default service in configuration, e.g. for development:
 
     services:
         mailino.exchange: Varhall\Mailino\Exchanges\LogExchange(%tempDir%/mails)
 
+<a name="queue"></a>
+## Queue
+
+Sending through a queue moves SMTP communication and MJML rendering out of the web request. Mailino does not depend on any queue library. Implement `IMailQueue` adapter for your queue (Symfony Messenger, RabbitMQ, database table...) and call `QueueWorker` in consumer:
+
+```php
+use Varhall\Mailino\Queue\IMailQueue;
+use Varhall\Mailino\Queue\QueueWorker;
+
+class MailQueue implements IMailQueue
+{
+    public function push(string $payload): void
+    {
+        // store payload (JSON string) into your queue
+    }
+}
+
+// queue consumer
+$worker->handle($payload);   // QueueWorker - renders and sends mail by real exchange
+```
+
+    services:
+        - App\Mail\MailQueue
+        mailino.exchange: Varhall\Mailino\Queue\QueueExchange
+        - Varhall\Mailino\Queue\QueueWorker(Varhall\Mailino\Exchanges\MailExchange())
+
+> {warning} Mail is serialized to JSON, so template data must contain scalars, `null` and arrays only. Pass IDs or arrays instead of entities - objects throw `InvalidArgumentException` when the mail is queued.
+
+`QueueExchange` triggers `onQueued` event. Rendering errors appear in the worker, which uses exchange events described below.
+
 <a name="events"></a>
 ## Events
 
-`Exchange` support events. These events are triggers during send process. Supported events are `onSending`, `onSuccess`, `onError`. All the events accept `IMail` object as the first parameter, `onError` gets also thrown exception (any `Throwable`) as the second parameter. The exception is re-thrown after `onError` handlers are called.
+Exchanges extending `Exchange` (`MailExchange`, `LogExchange`, `NullExchange`) trigger events:
 
-The code below show an example of handling exchange events.
+| Event | Parameters | Description |
+|-------|------------|-------------|
+| `onSending` | `Mail $mail` | Before rendering |
+| `onSuccess` | `Mail $mail, RenderedMail $rendered` | After successful delivery |
+| `onError` | `Mail $mail, \Throwable $exception` | Rendering or delivery failed, exception is re-thrown |
 
-    $this->exchange->onSending[] = function (IMail $mail) {
-        $this->logger->log('Started sending email with subject %1', $mail->getSubject());
-    };
+```php
+$this->exchange->onSuccess[] = function (Mail $mail, RenderedMail $rendered) {
+    $this->logger->log('Sent email ' . $rendered->getSubject());
+};
 
-    $this->exchange->onSuccess[] = function (IMail $mail) {
-        $this->logger->log('Sending email with subject %1 succeeded', $mail->getSubject());
-    };
-
-    $this->exchange->onError[] = function (IMail $mail, \Throwable $exception) {
-        $this->logger->log('Sending email with subject %1 failed: %2', $mail->getSubject(), $exception->getMessage());
-    };
+$this->exchange->onError[] = function (Mail $mail, \Throwable $exception) {
+    $this->logger->log('Sending email ' . $mail->getTemplate() . ' failed: ' . $exception->getMessage());
+};
+```
 
 <a name="ssl-verification"></a>
 ## SSL verification
 
-Mailino does not change SSL settings. Earlier versions disabled SSL certificate verification globally for the whole PHP process by default. `MailExchange::setVerifySsl()` is deprecated and has no effect now.
-
-If SMTP server uses self-signed certificate (e.g. in development), disable verification for SMTP connection only in Nette mail configuration:
+Mailino does not change SSL settings. If SMTP server uses self-signed certificate (e.g. in development), disable verification for SMTP connection only in Nette mail configuration:
 
     mail:
         smtp: true

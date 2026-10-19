@@ -6,7 +6,9 @@ use Latte\Engine;
 use Nette\Bridges\ApplicationLatte\LatteFactory;
 use Tester\Assert;
 use Tests\Engine\ContainerTestCase;
-use Varhall\Mailino\Extensions\Decorators\PrefixDecorator;
+use Varhall\Mailino\Entities\Mail;
+use Varhall\Mailino\Extensions\Prefix;
+use Varhall\Mailino\Rendering\RenderedMail;
 use Varhall\Mailino\ILatteEngineFactory;
 use Varhall\Mailino\Mailino;
 use Varhall\Mailino\NetteLatteEngineFactory;
@@ -32,27 +34,28 @@ class MailinoTest extends ContainerTestCase
     public function testCreate_DefaultExtensions()
     {
         $container = $this->createContainer([ 'mailino' => [
-            'default_extensions'    => [ \Varhall\Mailino\Extensions\Prefix::class ],
+            'default_extensions'    => [ Prefix::class ],
             'embed_dir'             => FIXTURES_DIR . '/templates/embed',
         ] ]);
 
-        $mail = $container->getByType(Mailino::class)->create('html/test')->setSubject('Hello');
+        $mailino = $container->getByType(Mailino::class);
+        $mail = $mailino->create('html/test', [ 'data' => [] ])->setSubject('Hello');
 
-        Assert::type(PrefixDecorator::class, $mail);
-        Assert::equal('[TST] Hello', $mail->getSubject());
+        Assert::type(Mail::class, $mail);
+        Assert::equal([ Prefix::class ], $mail->getExtensions());
         Assert::equal(FIXTURES_DIR . '/templates/embed', $mail->getBasePath());
+        Assert::equal('[TST] Hello', $mailino->preview($mail)->getSubject());
 
         // explicit extend of the same extension does not duplicate prefix
-        Assert::equal('[TST] Hello', $mail->extend(\Varhall\Mailino\Extensions\Prefix::class)->getSubject());
+        Assert::equal('[TST] Hello', $mailino->preview($mail->extend(Prefix::class))->getSubject());
     }
 
     public function testCreate_Strict()
     {
         $container = $this->createContainer([ 'mailino' => [ 'strict' => true ] ]);
+        $mailino = $container->getByType(Mailino::class);
 
-        $mail = $container->getByType(Mailino::class)->create('strict/test');
-
-        Assert::exception(fn() => $mail->getHtmlBody(), \ErrorException::class);
+        Assert::exception(fn() => $mailino->preview($mailino->create('strict/test')), \ErrorException::class);
     }
 
     public function testPreview()
@@ -61,6 +64,7 @@ class MailinoTest extends ContainerTestCase
 
         $preview = $mailino->preview($mailino->create('subject/test', [ 'name' => 'Pepa' ]));
 
+        Assert::type(RenderedMail::class, $preview);
         Assert::equal('Hello Pepa & co', $preview->getSubject());
         Assert::contains('<p>Hi Pepa</p>', $preview->getHtmlBody());
         Assert::contains('Hi Pepa', $preview->getPlainBody());
@@ -80,8 +84,12 @@ class MailinoTest extends ContainerTestCase
     {
         $container = $this->createContainer([ 'mailino' => [ 'temp_dir' => TMP_DIR . '/latte' ] ]);
 
+        // unique template - template compiled earlier in the same process is not written to cache again
+        $template = TMP_DIR . '/' . uniqid('template-') . '.latte';
+        file_put_contents($template, '<p>{$value}</p>' . uniqid());
+
         $latte = $container->getByType(ILatteEngineFactory::class)->createLatte();
-        $latte->renderToString(FIXTURES_DIR . '/templates/html/test.html.latte', [ 'data' => [] ]);
+        $latte->renderToString($template, [ 'value' => 'x' ]);
 
         Assert::true(count(glob(TMP_DIR . '/latte/*.php')) > 0);
     }

@@ -2,11 +2,11 @@
 
 namespace Tests\Mailino\Exchanges;
 
-use Latte\Engine;
+use Nette\InvalidStateException;
 use Nette\Utils\FileSystem;
 use Tester\Assert;
 use Tests\Engine\ContainerTestCase;
-use Varhall\Mailino\Entities\IMail;
+use Tests\Engine\Helpers;
 use Varhall\Mailino\Entities\Mail;
 use Varhall\Mailino\Exchanges\IExchange;
 use Varhall\Mailino\Exchanges\LogExchange;
@@ -17,18 +17,16 @@ require_once __DIR__ . '/../../bootstrap.php';
 
 class ExchangesTest extends ContainerTestCase
 {
-    private function createMail(): IMail
+    private function createMail(): Mail
     {
-        return (new Mail(new Engine(), $this->getContainer(), FIXTURES_DIR . '/templates'))
-            ->setTemplate('subject/test')
-            ->setData([ 'name' => 'Pepa' ])
+        return (new Mail('subject/test', [ 'name' => 'Pepa' ]))
             ->setFrom('from@test.cz')
             ->addTo('to@test.cz');
     }
 
     public function testNullExchange()
     {
-        $exchange = new NullExchange();
+        $exchange = new NullExchange(Helpers::renderer());
 
         $events = [];
         $exchange->onSending[] = function () use (&$events) {
@@ -50,14 +48,14 @@ class ExchangesTest extends ContainerTestCase
 
     public function testNullExchange_Error()
     {
-        $exchange = new NullExchange();
+        $exchange = new NullExchange(Helpers::renderer());
 
         $errors = 0;
         $exchange->onError[] = function () use (&$errors) {
             $errors++;
         };
 
-        Assert::exception(fn() => $exchange->send($this->createMail()->clearTo()), \Nette\InvalidStateException::class);
+        Assert::exception(fn() => $exchange->send($this->createMail()->clearTo()), InvalidStateException::class);
         Assert::equal(1, $errors);
     }
 
@@ -66,7 +64,7 @@ class ExchangesTest extends ContainerTestCase
         $dir = TMP_DIR . '/mails';
         FileSystem::delete($dir);
 
-        $exchange = new LogExchange($dir);
+        $exchange = new LogExchange($dir, Helpers::renderer());
         $exchange->send($this->createMail());
 
         $files = glob("{$dir}/*.eml");
@@ -75,14 +73,12 @@ class ExchangesTest extends ContainerTestCase
         Assert::contains('To: to@test.cz', file_get_contents($files[0]));
     }
 
-    public function testInterface()
+    public function testContainer()
     {
-        Assert::type(IExchange::class, new NullExchange());
-        Assert::type(IExchange::class, $this->getContainer()->getByType(MailExchange::class));
         Assert::type(MailExchange::class, $this->getContainer()->getByType(IExchange::class));
     }
 
-    public function testReplaceExchange()
+    public function testContainer_ReplaceExchange()
     {
         $container = $this->createContainer([ 'services' => [ 'mailino.exchange' => NullExchange::class ] ]);
 

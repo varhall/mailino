@@ -5,13 +5,13 @@ namespace Tests\Mailino\Extensions;
 use Nette\InvalidArgumentException;
 use Tester\Assert;
 use Tests\Engine\ContainerTestCase;
-use Varhall\Mailino\Entities\IMail;
 use Varhall\Mailino\Extensions\ExtensionRegistry;
 use Varhall\Mailino\Extensions\IExtension;
 use Varhall\Mailino\Extensions\MjmlApi;
 use Varhall\Mailino\Extensions\MjmlBinary;
 use Varhall\Mailino\Extensions\Prefix;
 use Varhall\Mailino\Mailino;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 require_once __DIR__ . '/../../bootstrap.php';
 
@@ -25,6 +25,7 @@ class ExtensionRegistryTest extends ContainerTestCase
         Assert::true($registry->has(CustomExtension::class));
         Assert::same($extension, $registry->get(CustomExtension::class));
         Assert::same($extension, $registry->get(IExtension::class));
+        Assert::equal([ CustomExtension::class => $extension ], $registry->all());
         Assert::false($registry->has(Prefix::class));
         Assert::exception(fn() => $registry->get(Prefix::class), InvalidArgumentException::class, '~not registered~');
     }
@@ -41,28 +42,19 @@ class ExtensionRegistryTest extends ContainerTestCase
     public function testContainer_ApplicationExtension()
     {
         $container = $this->createContainer([ 'services' => [ CustomExtension::class ] ]);
+        $mailino = $container->getByType(Mailino::class);
 
-        $mail = $container->getByType(Mailino::class)->create('html/test')->extend(CustomExtension::class);
+        $mail = $mailino->create('html/test', [ 'data' => [] ])->setSubject('Hello')->extend(CustomExtension::class);
 
-        Assert::same('custom', $mail->getSubject());
-    }
-
-    public function testMailino_MailWithoutContainer()
-    {
-        $mail = $this->getContainer()->getByType(Mailino::class)->create('html/test');
-
-        $properties = (fn() => [ $this->container, $this->registry ])->call($mail);
-
-        Assert::null($properties[0]);
-        Assert::type(ExtensionRegistry::class, $properties[1]);
+        Assert::same('Hello (custom)', $mailino->preview($mail)->getSubject());
     }
 }
 
 class CustomExtension implements IExtension
 {
-    public function extend(IMail $mail): IMail
+    public function process(RenderedMail $mail): RenderedMail
     {
-        return $mail->setSubject('custom');
+        return $mail->withSubject($mail->getSubject() . ' (custom)');
     }
 }
 

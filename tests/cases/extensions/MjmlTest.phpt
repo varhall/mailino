@@ -4,43 +4,44 @@ namespace Tests\Mailino\Extensions;
 
 use Tester\Assert;
 use Tests\Engine\ContainerTestCase;
-use Varhall\Mailino\Entities\Mail;
-use Varhall\Mailino\Extensions\Decorators\MjmlDecorator;
+use Tests\Engine\Php;
+use Varhall\Mailino\Config;
+use Varhall\Mailino\Extensions\Mjml\MjmlApiRenderer;
+use Varhall\Mailino\Extensions\Mjml\MjmlBinaryRenderer;
 use Varhall\Mailino\Extensions\MjmlApi;
 use Varhall\Mailino\Extensions\MjmlBinary;
-use Varhall\Mailino\Extensions\Mjml\MjmlHttpApi;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 require_once __DIR__ . '/../../bootstrap.php';
 
 class MjmlTest extends ContainerTestCase
 {
-    public function getTypes()
+    public function testMjmlApi_Config()
     {
-        return [ [MjmlBinary::class], [MjmlApi::class] ];
+        $renderer = $this->getContainer()->getByType(MjmlApi::class)->getRenderer();
+
+        Assert::type(MjmlApiRenderer::class, $renderer);
+        Assert::equal('https://mjml.local/v1', $renderer->getUrl());
     }
 
-    /** @dataProvider getTypes */
-    public function testExtend($type)
+    public function testMjmlBinary_Config()
     {
-        $mail = \Mockery::mock(Mail::class);
-
-        $factory = $this->getContainer()->getByType($type);
-        $decorator = $factory->extend($mail);
-
-        Assert::type(MjmlDecorator::class, $decorator);
+        Assert::type(MjmlBinaryRenderer::class, $this->getContainer()->getByType(MjmlBinary::class)->getRenderer());
     }
 
-    public function testApiUrlFromConfig()
+    public function testMjmlBinary_Process()
     {
-        $mail = \Mockery::mock(Mail::class);
+        $config = new Config((object) [ 'extensions' => [ 'mjml.binary' => [
+            'binary'    => [ Php::binary(), FIXTURES_DIR . '/mjml-binary.php' ],
+            'timeout'   => 10,
+        ] ] ]);
 
-        $decorator = $this->getContainer()->getByType(MjmlApi::class)->extend($mail);
+        $mail = new RenderedMail('tpl', 'Subject', '<mjml><mj-body>Hello</mj-body></mjml>', 'plain');
+        $rendered = (new MjmlBinary($config))->process($mail);
 
-        $renderer = (fn() => $this->mjml)->call($decorator);
-        $api = (fn() => $this->client)->call($renderer);
-
-        Assert::type(MjmlHttpApi::class, $api);
-        Assert::equal('https://mjml.local/v1', $api->getUrl());
+        Assert::equal('<html><body>Hello</body></html>', $rendered->getHtmlBody());
+        Assert::equal('Subject', $rendered->getSubject());
+        Assert::equal('plain', $rendered->getPlainBody());
     }
 }
 

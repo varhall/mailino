@@ -1,36 +1,46 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Extensions;
 
-use Qferrer\Mjml\Renderer\ApiRenderer;
 use Varhall\Mailino\Config;
-use Varhall\Mailino\Entities\IMail;
-use Varhall\Mailino\Extensions\Decorators\MjmlDecorator;
-use Varhall\Mailino\Extensions\Mjml\MjmlHttpApi;
+use Varhall\Mailino\Extensions\Mjml\IMjmlRenderer;
+use Varhall\Mailino\Extensions\Mjml\MjmlApiRenderer;
+use Varhall\Mailino\Rendering\RenderedMail;
 
+/**
+ * Renders MJML in HTML body using MJML HTTP API (configuration section "mjml.api")
+ */
 class MjmlApi implements IExtension
 {
-    private Config $config;
+    private ?IMjmlRenderer $renderer = null;
 
-    public function __construct(Config $config)
-    {
-        $this->config = $config;
+    public function __construct(
+        private readonly Config $config
+    ) {
     }
 
-    public function extend(IMail $mail): IMail
+    public function process(RenderedMail $mail): RenderedMail
     {
-        $config = $this->config->getExtension('mjml.api');
-        $api = new MjmlHttpApi(
-            $config['id'],
-            $config['secret'],
-            $config['url'] ?? null,
-            null,
-            $config['timeout'] ?? 30,
-            $config['connect_timeout'] ?? 10,
-            $config['validation_level'] ?? MjmlHttpApi::VALIDATION_SOFT
-        );
-        $mjml = new ApiRenderer($api);
+        return $mail->withHtmlBody($this->getRenderer()->render($mail->getHtmlBody()));
+    }
 
-        return new MjmlDecorator($mail, $mjml);
+    public function getRenderer(): IMjmlRenderer
+    {
+        if ($this->renderer === null) {
+            $config = $this->config->getExtension('mjml.api');
+
+            $this->renderer = new MjmlApiRenderer(
+                $config['id'],
+                $config['secret'],
+                $config['url'] ?? null,
+                $config['timeout'] ?? 30,
+                $config['connect_timeout'] ?? 10,
+                $config['validation_level'] ?? MjmlApiRenderer::VALIDATION_SOFT
+            );
+        }
+
+        return $this->renderer;
     }
 }

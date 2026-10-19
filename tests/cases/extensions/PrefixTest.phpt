@@ -3,38 +3,50 @@
 namespace Tests\Mailino\Extensions;
 
 use Tester\Assert;
-use Tests\Engine\ContainerTestCase;
-use Varhall\Mailino\Entities\Mail;
-use Varhall\Mailino\Extensions\Decorators\PrefixDecorator;
+use Tests\Engine\BaseTestCase;
+use Varhall\Mailino\Config;
 use Varhall\Mailino\Extensions\Prefix;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-class PrefixTest extends ContainerTestCase
+class PrefixTest extends BaseTestCase
 {
-    public function testExtend()
+    private function prefix(string $subject): Prefix
     {
-        $mail = \Mockery::mock(Mail::class);
-        $mail->shouldReceive('getSubject')->andReturn('subject');
-
-        $factory = $this->getContainer()->getByType(Prefix::class);
-        $decorator = $factory->extend($mail);
-
-        Assert::type(PrefixDecorator::class, $decorator);
-        Assert::equal('[TST] subject', $decorator->getSubject());
+        return new Prefix(new Config((object) [ 'extensions' => [ 'prefix' => [ 'subject' => $subject ] ] ]));
     }
 
-    public function testSettersOnExtension()
+    private function mail(string $subject): RenderedMail
     {
-        $mail = \Mockery::mock(Mail::class);
-        $mail->shouldReceive('setSubject')->andReturn($mail);
+        return new RenderedMail('tpl', $subject, '', '');
+    }
 
-        $factory = $this->getContainer()->getByType(Prefix::class);
-        $decorator = $factory->extend($mail);
+    public function testProcess()
+    {
+        Assert::equal('[TST] Hello', $this->prefix('TST')->process($this->mail('Hello'))->getSubject());
+    }
 
-        $decorator = $decorator->setSubject('xxx');
+    public function testProcess_Idempotent()
+    {
+        $prefix = $this->prefix('TST');
 
-        Assert::type(PrefixDecorator::class, $decorator);
+        Assert::equal('[TST] Hello', $prefix->process($prefix->process($this->mail('Hello')))->getSubject());
+    }
+
+    public function testProcess_DifferentPrefixes()
+    {
+        Assert::equal('[B] [A] Hello', $this->prefix('B')->process($this->prefix('A')->process($this->mail('Hello')))->getSubject());
+    }
+
+    public function testProcess_EmptySubject()
+    {
+        Assert::equal('[TST]', $this->prefix('TST')->process($this->mail(''))->getSubject());
+    }
+
+    public function testProcess_EmptyPrefix()
+    {
+        Assert::equal('Hello', $this->prefix('')->process($this->mail('Hello'))->getSubject());
     }
 }
 

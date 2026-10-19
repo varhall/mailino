@@ -1,179 +1,109 @@
 <?php
 
-namespace Tests\Mailino;
+namespace Tests\Mailino\Exchanges;
 
 use Nette\InvalidStateException;
 use Nette\Mail\Mailer;
+use Nette\Mail\Message;
 use Tester\Assert;
-use Tester\TestCaseException;
 use Tests\Engine\BaseTestCase;
+use Tests\Engine\Helpers;
 use Varhall\Mailino\Entities\Attachment;
 use Varhall\Mailino\Entities\Mail;
-use Varhall\Mailino\Entities\Recipient;
 use Varhall\Mailino\Exchanges\MailExchange;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 require_once __DIR__ . '/../../bootstrap.php';
 
 class MailExchangeTest extends BaseTestCase
 {
-    private function mailMock()
+    private function createMail(): Mail
     {
-        $mail = \Mockery::mock(Mail::class);
-        $mail->shouldReceive('getFrom')->andReturn(new Recipient('from@test.cz', 'From'));
-        $mail->shouldReceive('getSubject')->andReturn('subject')->byDefault();
-        $mail->shouldReceive('getPlainBody')->andReturn('plain')->byDefault();
-        $mail->shouldReceive('getHtmlBody')->andReturn('html')->byDefault();
-        $mail->shouldReceive('getTo')->andReturn([
-            new Recipient('to1@test.cz', 'To1'),
-            new Recipient('to2@test.cz', 'To2')
-        ])->byDefault();
-        $mail->shouldReceive('getCc')->andReturn([
-            new Recipient('cc1@test.cz', 'Cc'),
-            new Recipient('cc2@test.cz', 'Cc')
-        ])->byDefault();
-        $mail->shouldReceive('getBcc')->andReturn([
-            new Recipient('bcc1@test.cz', 'Bcc1'),
-            new Recipient('bcc2@test.cz', 'Bcc2')
-        ])->byDefault();
-        $mail->shouldReceive('getFiles')->andReturn([
-            new Attachment('content 1', 'text/plain', 'attachment1.txt'),
-            new Attachment('content 2', 'text/plain', 'attachment2.txt')
-        ]);
-        $mail->shouldReceive('getReplyTo')->andReturn([])->byDefault();
-        $mail->shouldReceive('getReturnPath')->andReturn(null)->byDefault();
-        $mail->shouldReceive('getPriority')->andReturn(null)->byDefault();
-        $mail->shouldReceive('getHeaders')->andReturn([])->byDefault();
-        $mail->shouldReceive('getBasePath')->andReturn(null)->byDefault();
+        return (new Mail('subject/test', [ 'name' => 'Pepa' ]))
+            ->setFrom('from@test.cz', 'From')
+            ->addTo('to1@test.cz', 'To1')
+            ->addTo('to2@test.cz')
+            ->addCc('cc@test.cz', 'Cc')
+            ->addBcc('bcc@test.cz', 'Bcc')
+            ->addReplyTo('reply@test.cz', 'Reply')
+            ->addFile(new Attachment('content 1', 'text/plain', 'attachment1.txt'))
+            ->setReturnPath('bounce@test.cz')
+            ->setPriority(1)
+            ->addHeader('X-Custom', 'my-value');
+    }
 
-        return $mail;
+    /**
+     * @return array{MailExchange, \Closure(): ?Message}
+     */
+    private function createExchange(?\Throwable $error = null): array
+    {
+        $sent = null;
+        $mailer = \Mockery::mock(Mailer::class);
+        $send = $mailer->shouldReceive('send');
+
+        $error !== null
+            ? $send->andThrow($error)
+            : $send->andReturnUsing(function (Message $message) use (&$sent) {
+                $sent = $message;
+            });
+
+        return [ new MailExchange($mailer, Helpers::renderer()), function () use (&$sent) {
+            return $sent;
+        } ];
     }
 
     public function testSend()
     {
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send');
+        [ $exchange, $sent ] = $this->createExchange();
+        $exchange->send($this->createMail());
 
-        $exchange = new MailExchange($mailer);
-        $exchange->send($this->mailMock());
-    }
-
-    public function testSend_ReplyTo()
-    {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getReplyTo')->andReturn([
-            new Recipient('reply@test.cz', 'Reply'),
-        ]);
-
-        $sentMessage = null;
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send')->with(\Mockery::capture($sentMessage));
-
-        $exchange = new MailExchange($mailer);
-        $exchange->send($mail);
-
-        Assert::notNull($sentMessage);
-        Assert::equal(['reply@test.cz' => 'Reply'], $sentMessage->getHeader('Reply-To'));
-    }
-
-    public function testSend_ReturnPath()
-    {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getReturnPath')->andReturn('bounce@test.cz');
-
-        $sentMessage = null;
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send')->with(\Mockery::capture($sentMessage));
-
-        $exchange = new MailExchange($mailer);
-        $exchange->send($mail);
-
-        Assert::equal('bounce@test.cz', $sentMessage->getReturnPath());
-    }
-
-    public function testSend_Priority()
-    {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getPriority')->andReturn(1);
-
-        $sentMessage = null;
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send')->with(\Mockery::capture($sentMessage));
-
-        $exchange = new MailExchange($mailer);
-        $exchange->send($mail);
-
-        Assert::equal(1, $sentMessage->getPriority());
-    }
-
-    public function testSend_Headers()
-    {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getHeaders')->andReturn(['X-Custom' => 'my-value']);
-
-        $sentMessage = null;
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send')->with(\Mockery::capture($sentMessage));
-
-        $exchange = new MailExchange($mailer);
-        $exchange->send($mail);
-
-        Assert::equal('my-value', $sentMessage->getHeader('X-Custom'));
+        $message = $sent();
+        Assert::type(Message::class, $message);
+        Assert::equal([ 'from@test.cz' => 'From' ], $message->getFrom());
+        Assert::equal('Hello Pepa & co', $message->getSubject());
+        Assert::equal([ 'to1@test.cz' => 'To1', 'to2@test.cz' => null ], $message->getHeader('To'));
+        Assert::equal([ 'cc@test.cz' => 'Cc' ], $message->getHeader('Cc'));
+        Assert::equal([ 'bcc@test.cz' => 'Bcc' ], $message->getHeader('Bcc'));
+        Assert::equal([ 'reply@test.cz' => 'Reply' ], $message->getHeader('Reply-To'));
+        Assert::equal('bounce@test.cz', $message->getReturnPath());
+        Assert::equal(1, $message->getPriority());
+        Assert::equal('my-value', $message->getHeader('X-Custom'));
+        Assert::contains('<p>Hi Pepa</p>', $message->getHtmlBody());
+        Assert::contains('Hi Pepa', $message->getBody());
+        Assert::count(1, $message->getAttachments());
     }
 
     public function testEvents_Success()
     {
-        $mail = $this->mailMock();
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send');
+        [ $exchange ] = $this->createExchange();
+        $mail = $this->createMail();
 
-        $exchange = new MailExchange($mailer);
-
-        $exchange->onSending[] = function ($x) use ($mail) {
+        $events = [];
+        $exchange->onSending[] = function (Mail $x) use (&$events, $mail) {
             Assert::same($mail, $x);
+            $events[] = 'sending';
         };
-        $exchange->onSuccess[] = function ($x) use ($mail) {
+        $exchange->onSuccess[] = function (Mail $x, RenderedMail $rendered) use (&$events, $mail) {
             Assert::same($mail, $x);
+            Assert::equal('Hello Pepa & co', $rendered->getSubject());
+            $events[] = 'success';
         };
-        $exchange->onError[] = function ($x) {
-            Assert::fail('Error event should not be triggered');
-        };
+        $exchange->onError[] = fn() => Assert::fail('Error event should not be triggered');
 
         $exchange->send($mail);
+
+        Assert::equal([ 'sending', 'success' ], $events);
     }
 
     public function testEvents_Error()
     {
-        $mail = $this->mailMock();
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send')->andThrow(new TestCaseException());
-
-        $exchange = new MailExchange($mailer);
-
-        $exchange->onSending[] = function ($x) use ($mail) {
-            Assert::same($mail, $x);
-        };
-        $exchange->onSuccess[] = function ($x) {
-            Assert::fail('Success event should not be triggered');
-        };
-        $exchange->onError[] = function ($x) use ($mail) {
-            Assert::same($mail, $x);
-        };
-
-        Assert::exception(function () use ($exchange, $mail) {
-            $exchange->send($mail);
-        }, TestCaseException::class);
-    }
-
-    public function testEvents_ErrorOnThrowable()
-    {
-        $mail = $this->mailMock();
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send')->andThrow(new \TypeError('type error'));
-
-        $exchange = new MailExchange($mailer);
+        [ $exchange ] = $this->createExchange(new \TypeError('type error'));
+        $mail = $this->createMail();
 
         $caught = null;
-        $exchange->onError[] = function ($x, $ex) use (&$caught) {
+        $exchange->onSuccess[] = fn() => Assert::fail('Success event should not be triggered');
+        $exchange->onError[] = function (Mail $x, \Throwable $ex) use (&$caught, $mail) {
+            Assert::same($mail, $x);
             $caught = $ex;
         };
 
@@ -183,79 +113,47 @@ class MailExchangeTest extends BaseTestCase
 
     public function testSend_NoRecipients()
     {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getTo')->andReturn([]);
-        $mail->shouldReceive('getCc')->andReturn([]);
-        $mail->shouldReceive('getBcc')->andReturn([]);
-
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldNotReceive('send');
-
-        $exchange = new MailExchange($mailer);
+        [ $exchange, $sent ] = $this->createExchange();
 
         $errors = 0;
         $exchange->onError[] = function () use (&$errors) {
             $errors++;
         };
 
-        Assert::exception(fn() => $exchange->send($mail), InvalidStateException::class, 'Mail has no recipients (to, cc or bcc)');
+        Assert::exception(
+            fn() => $exchange->send($this->createMail()->clearTo()->clearCc()->clearBcc()),
+            InvalidStateException::class,
+            'Mail has no recipients (to, cc or bcc)'
+        );
         Assert::equal(1, $errors);
+        Assert::null($sent());
     }
 
-    public function testCreateMessage_PlainGeneratedFromHtml()
+    public function testSend_NoSender()
     {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getPlainBody')->andReturn('');
-        $mail->shouldReceive('getHtmlBody')->andReturn('<p>Hello <b>world</b></p>');
+        [ $exchange ] = $this->createExchange();
 
-        $message = (new MailExchange(\Mockery::mock(Mailer::class)))->createMessage($mail);
-
-        Assert::contains('Hello', $message->getBody());
-        Assert::notContains('<b>', $message->getBody());
+        Assert::exception(fn() => $exchange->send((new Mail('subject/test', [ 'name' => 'x' ]))->addTo('to@test.cz')), InvalidStateException::class, 'Sender (from) is not set');
     }
 
-    public function testCreateMessage_SubjectFromTitle()
+    public function testSend_EmbeddedImages()
     {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getSubject')->andReturn('');
-        $mail->shouldReceive('getHtmlBody')->andReturn('<html><head><title>Title subject</title></head><body>x</body></html>');
+        [ $exchange, $sent ] = $this->createExchange();
 
-        $message = (new MailExchange(\Mockery::mock(Mailer::class)))->createMessage($mail);
+        $exchange->send($this->createMail()->setTemplate('embed/test')->setBasePath(FIXTURES_DIR . '/templates/embed'));
 
-        Assert::equal('Title subject', $message->getSubject());
-    }
-
-    public function testCreateMessage_EmbeddedImages()
-    {
-        $mail = $this->mailMock();
-        $mail->shouldReceive('getHtmlBody')->andReturn('<p><img src="logo.png"></p>');
-        $mail->shouldReceive('getBasePath')->andReturn(FIXTURES_DIR . '/templates/embed');
-
-        $message = (new MailExchange(\Mockery::mock(Mailer::class)))->createMessage($mail);
-
-        Assert::match('~<img src="cid:[^"]+">~', $message->getHtmlBody());
-        Assert::contains('Content-Disposition: inline', $message->generateMessage());
+        Assert::match('~<img src="cid:[^"]+">~', $sent()->getHtmlBody());
+        Assert::contains('Content-Disposition: inline', $sent()->generateMessage());
     }
 
     public function testSend_DoesNotChangeDefaultStreamContext()
     {
         $before = stream_context_get_options(stream_context_get_default());
 
-        $mailer = \Mockery::mock(Mailer::class);
-        $mailer->shouldReceive('send');
-
-        (new MailExchange($mailer))->send($this->mailMock());
+        [ $exchange ] = $this->createExchange();
+        $exchange->send($this->createMail());
 
         Assert::equal($before, stream_context_get_options(stream_context_get_default()));
-    }
-
-    public function testVerifySsl_Deprecated()
-    {
-        $exchange = new MailExchange(\Mockery::mock(Mailer::class));
-
-        Assert::error(fn() => $exchange->setVerifySsl(false), E_USER_DEPRECATED);
-        Assert::noError(fn() => $exchange->setVerifySsl(true));
-        Assert::true($exchange->isVerifySsl());
     }
 
     protected function tearDown()

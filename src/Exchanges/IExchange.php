@@ -1,14 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Exchanges;
 
-use Varhall\Mailino\Entities\IMail;
+use Varhall\Mailino\Entities\Mail;
 
 /**
  * Mail sending backend. Type your dependencies with this interface to be able to switch
- * implementation (SMTP, log, null) in configuration.
+ * implementation (SMTP, queue, log, null) in configuration.
  */
 interface IExchange
 {
-    public function send(IMail $mail): void;
+    public function send(Mail $mail): void;
 }

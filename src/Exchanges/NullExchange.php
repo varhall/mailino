@@ -1,34 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Exchanges;
 
 use Nette\Mail\Message;
-use Varhall\Mailino\Entities\IMail;
+use Varhall\Mailino\Rendering\MailRenderer;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 /**
- * Does not send anything, only renders messages and keeps them in memory (tests, development)
+ * Does not send anything, keeps messages in memory (tests, development)
  */
 class NullExchange extends Exchange
 {
     private MessageFactory $messageFactory;
 
-    /** @var Message[] */
+    /** @var list<Message> */
     private array $messages = [];
 
-    public function __construct(?MessageFactory $messageFactory = null)
+    public function __construct(MailRenderer $renderer, ?MessageFactory $messageFactory = null)
     {
+        parent::__construct($renderer);
         $this->messageFactory = $messageFactory ?? new MessageFactory();
     }
 
-    public function send(IMail $mail): void
-    {
-        $this->dispatch($mail, function () use ($mail): void {
-            $this->messages[] = $this->messageFactory->create($mail);
-        });
-    }
-
     /**
-     * @return Message[]
+     * @return list<Message>
      */
     public function getMessages(): array
     {
@@ -38,5 +35,10 @@ class NullExchange extends Exchange
     public function clear(): void
     {
         $this->messages = [];
+    }
+
+    protected function deliver(RenderedMail $mail): void
+    {
+        $this->messages[] = $this->messageFactory->create($mail);
     }
 }

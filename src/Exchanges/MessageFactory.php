@@ -1,33 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Exchanges;
 
 use Nette\InvalidStateException;
 use Nette\Mail\Message;
-use Varhall\Mailino\Entities\IMail;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 /**
- * Converts mail to Nette message (renders templates and applies extensions)
+ * Converts rendered mail to Nette message
  */
 class MessageFactory
 {
-    public function create(IMail $mail): Message
+    public function create(RenderedMail $mail): Message
     {
+        $from = $mail->getFrom();
+
+        if ($from === null) {
+            throw new InvalidStateException('Sender (from) is not set');
+        }
+
         if (empty($mail->getTo()) && empty($mail->getCc()) && empty($mail->getBcc())) {
             throw new InvalidStateException('Mail has no recipients (to, cc or bcc)');
         }
 
         $message = (new Message())
-            ->setFrom($mail->getFrom()->getEmail(), $mail->getFrom()->getName());
-
-        // when subject is empty, Nette uses <title> from HTML body (e.g. <mj-title> in MJML)
-        $subject = $mail->getSubject();
-        if ($subject !== '') {
-            $message->setSubject($subject);
-        }
-
-        // plain body is set first, Nette generates plain text from HTML when it is empty
-        $message->setBody($mail->getPlainBody())
+            ->setFrom($from->getEmail(), $from->getName())
+            ->setSubject($mail->getSubject())
+            ->setBody($mail->getPlainBody())
             ->setHtmlBody($mail->getHtmlBody(), $mail->getBasePath());
 
         foreach ($mail->getTo() as $recipient) {
@@ -42,12 +43,12 @@ class MessageFactory
             $message->addBcc($recipient->getEmail(), $recipient->getName());
         }
 
-        foreach ($mail->getFiles() as $file) {
-            $message->addAttachment($file->getName(), $file->getContent(), $file->getContentType());
-        }
-
         foreach ($mail->getReplyTo() as $recipient) {
             $message->addReplyTo($recipient->getEmail(), $recipient->getName());
+        }
+
+        foreach ($mail->getFiles() as $file) {
+            $message->addAttachment($file->getName(), $file->getContent(), $file->getContentType());
         }
 
         if ($mail->getReturnPath() !== null) {

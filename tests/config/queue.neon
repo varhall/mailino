@@ -1,0 +1,5 @@
+# queue setup from documentation (.docs/README.md#queue)
+services:
+	- Tests\Mailino\Queue\MemoryQueue
+	mailino.exchange: Varhall\Mailino\Queue\QueueExchange
+	- Varhall\Mailino\Queue\QueueWorker(Varhall\Mailino\Exchanges\NullExchange())

@@ -1,6 +1,28 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 (unreleased)
+
+A major version with breaking changes. See [UPGRADE-2.0.md](UPGRADE-2.0.md) for details and the upgrade checklist.
+
+### Changed
+- `Mail` is a serializable value object (template, data, recipients, attachments, headers, extensions) without DI container and Latte engine. The `IMail` interface is removed.
+- `MailRenderer` renders templates and applies extensions. It returns the immutable `RenderedMail`.
+- Extensions process `RenderedMail` (`IExtension::process()`) instead of decorating the mail. `MailDecorator` and decorators are removed. `extend()` returns the same instance and ignores duplicates.
+- Exchanges send `Mail`, subclasses implement `deliver(RenderedMail)`. `onSuccess` receives `RenderedMail` and `onError` receives `\Throwable`.
+- `Mailino::preview()` returns `RenderedMail` (`Preview` is removed).
+- `Recipient` and `Attachment` are immutable.
+- Own MJML renderers (`MjmlApiRenderer`, `MjmlBinaryRenderer`) and `MjmlException` replace `qferr/mjml-php`, which is no longer a dependency.
+- Requires PHP 8.2. All files use `declare(strict_types=1)`. PHPStan runs at level 8.
+
+### Added
+- Sending through a queue: `QueueExchange`, `IMailQueue` adapter, `QueueWorker` and JSON `MailSerializer`.
+- The subject can come from `<mj-title>` of MJML templates.
+- `Mail::getExtensions()`, `hasExtension()`, `removeExtension()`, `clearFiles()` and `Attachment::withName()`.
+
+### Removed
+- Deprecated 1.x API: `IMail`, `MailDecorator`, `IExtension::extend()`, `MailExchange::setVerifySsl()` / `isVerifySsl()` / `createMessage()`, URL as an attachment path, the DI container in `Mail` and `Mailino` constructors, and `Preview`.
+
+## 1.3.1 (unreleased)
 
 ### Fixed
 - `MjmlBinaryRenderer` emitted a "Broken pipe" notice when the MJML process exited before reading the whole input. The process error is reported instead.

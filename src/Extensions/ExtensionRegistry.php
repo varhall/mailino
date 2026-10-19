@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Extensions;
 
 use Nette\InvalidArgumentException;

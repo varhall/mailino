@@ -1,28 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Entities;
 
-class Recipient
+/**
+ * Immutable mail address with optional display name
+ */
+final class Recipient
 {
-    private ?string $name;
-
-    private string $email;
-
-
-    public function __construct(string $email, ?string $name = null)
-    {
-        $this->email = $email;
-        $this->name = $name;
-    }
-
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
-
-    public function setName(?string $name): void
-    {
-        $this->name = $name;
+    public function __construct(
+        private readonly string $email,
+        private readonly ?string $name = null
+    ) {
     }
 
     public function getEmail(): string
@@ -30,8 +20,8 @@ class Recipient
         return $this->email;
     }
 
-    public function setEmail(string $email): void
+    public function getName(): ?string
     {
-        $this->email = $email;
+        return $this->name;
     }
 }

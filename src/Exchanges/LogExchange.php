@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Exchanges;
 
 use Nette\IOException;
 use Nette\Utils\FileSystem;
-use Varhall\Mailino\Entities\IMail;
+use Varhall\Mailino\Rendering\MailRenderer;
+use Varhall\Mailino\Rendering\RenderedMail;
 
 /**
  * Writes messages as .eml files into directory instead of sending (development, staging)
@@ -15,15 +18,11 @@ class LogExchange extends Exchange
 
     private MessageFactory $messageFactory;
 
-    public function __construct(string $directory, ?MessageFactory $messageFactory = null)
+    public function __construct(string $directory, MailRenderer $renderer, ?MessageFactory $messageFactory = null)
     {
+        parent::__construct($renderer);
         $this->directory = rtrim($directory, '/\\');
         $this->messageFactory = $messageFactory ?? new MessageFactory();
-    }
-
-    public function send(IMail $mail): void
-    {
-        $this->dispatch($mail, fn() => $this->write($mail));
     }
 
     public function getDirectory(): string
@@ -31,7 +30,7 @@ class LogExchange extends Exchange
         return $this->directory;
     }
 
-    private function write(IMail $mail): void
+    protected function deliver(RenderedMail $mail): void
     {
         FileSystem::createDir($this->directory);
 

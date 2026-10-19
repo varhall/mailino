@@ -90,18 +90,20 @@ class AttachmentTest extends BaseTestCase
         Assert::exception(fn() => Attachment::fromUrl('file:///etc/passwd'), InvalidArgumentException::class);
     }
 
-    public function testFromFile_UrlDeprecated()
+    public function testFromPath_UrlRejected()
     {
-        $server = new HttpServer(FIXTURES_DIR . '/http/router.php');
+        Assert::exception(fn() => Attachment::fromPath('https://example.com/a.txt'), InvalidArgumentException::class, '~fromUrl~');
+        Assert::exception(fn() => Attachment::fromFile(new \SplFileInfo('ftp://example.com/a.txt')), InvalidArgumentException::class);
+    }
 
-        try {
-            Assert::error(function () use ($server) {
-                $attachment = Attachment::fromFile(new \SplFileInfo($server->getUrl() . '/files/report.txt'));
-                Assert::equal('remote content', $attachment->getContent());
-            }, E_USER_DEPRECATED);
-        } finally {
-            $server->stop();
-        }
+    public function testWithName()
+    {
+        $attachment = new Attachment('content', 'text/plain', 'a.txt');
+        $renamed = $attachment->withName('b.txt');
+
+        Assert::equal('a.txt', $attachment->getName());
+        Assert::equal('b.txt', $renamed->getName());
+        Assert::equal('content', $renamed->getContent());
     }
 
     /** @dataProvider getFileNames */

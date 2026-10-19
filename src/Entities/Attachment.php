@@ -1,30 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Entities;
 
 use Nette\FileNotFoundException;
 use Nette\Http\FileUpload;
+use Nette\InvalidArgumentException;
 use Nette\IOException;
 
 /**
- * @phpstan-consistent-constructor
+ * Immutable mail attachment
  */
-class Attachment
+final class Attachment
 {
     private const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 
-    private ?string $name;
-
-    private string $content;
-
-    private string $contentType;
-
-
-    public function __construct(string $content, string $contentType, ?string $name = null)
-    {
-        $this->content = $content;
-        $this->contentType = $contentType;
-        $this->name = $name;
+    public function __construct(
+        private readonly string $content,
+        private readonly string $contentType,
+        private readonly string $name
+    ) {
     }
 
 
@@ -32,7 +28,11 @@ class Attachment
 
     public static function fromUpload(FileUpload $file, ?string $name = null): self
     {
-        return new static($file->getContents(), $file->getContentType() ?? self::DEFAULT_CONTENT_TYPE, $name ?? $file->getUntrustedName());
+        return new self(
+            $file->getContents() ?? '',
+            $file->getContentType() ?? self::DEFAULT_CONTENT_TYPE,
+            $name ?? $file->getUntrustedName()
+        );
     }
 
     /**
@@ -40,22 +40,17 @@ class Attachment
      */
     public static function fromContent(string $content, string $name, ?string $contentType = null): self
     {
-        return new static($content, $contentType ?? self::detectContentType($content), $name);
+        return new self($content, $contentType ?? self::detectContentType($content), $name);
     }
 
+    /**
+     * Reads local file. Never pass user input as path.
+     */
     public static function fromPath(string $path, ?string $name = null): self
     {
-        return self::fromFile(new \SplFileInfo($path), $name);
-    }
-
-    public static function fromFile(\SplFileInfo $file, ?string $name = null): self
-    {
-        if (self::isUrl($file->getPathname())) {
-            trigger_error('Creating attachment from URL using ' . __METHOD__ . '() is deprecated, use ' . self::class . '::fromUrl()', E_USER_DEPRECATED);
-            return self::fromUrl($file->getPathname(), $name);
+        if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $path)) {
+            throw new InvalidArgumentException("Attachment path '{$path}' must be local file, use Attachment::fromUrl() for URLs");
         }
-
-        $path = $file->getPathname();
 
         if (!is_file($path) || !is_readable($path)) {
             throw new FileNotFoundException("Attachment file '{$path}' does not exist or is not readable");
@@ -67,7 +62,12 @@ class Attachment
             throw new IOException("Unable to read attachment file '{$path}'");
         }
 
-        return new static($content, self::detectContentType($content), $name ?? $file->getFilename());
+        return new self($content, self::detectContentType($content), $name ?? basename($path));
+    }
+
+    public static function fromFile(\SplFileInfo $file, ?string $name = null): self
+    {
+        return self::fromPath($file->getPathname(), $name ?? $file->getFilename());
     }
 
     /**
@@ -75,8 +75,8 @@ class Attachment
      */
     public static function fromUrl(string $url, ?string $name = null): self
     {
-        if (!self::isUrl($url)) {
-            throw new \Nette\InvalidArgumentException("Attachment URL '{$url}' must use http or https scheme");
+        if (!preg_match('#^https?://#i', $url)) {
+            throw new InvalidArgumentException("Attachment URL '{$url}' must use http or https scheme");
         }
 
         $content = @file_get_contents($url);
@@ -87,20 +87,15 @@ class Attachment
 
         $name ??= basename((string) parse_url($url, PHP_URL_PATH)) ?: 'attachment';
 
-        return new static($content, self::detectContentType($content), $name);
+        return new self($content, self::detectContentType($content), $name);
     }
 
 
-    /// GETTERS & SETTERS
+    /// GETTERS
 
     public function getName(): string
     {
-        return $this->name ?? '';
-    }
-
-    public function setName(?string $name): void
-    {
-        $this->name = $name;
+        return $this->name;
     }
 
     public function getContent(): string
@@ -108,28 +103,18 @@ class Attachment
         return $this->content;
     }
 
-    public function setContent(string $content): void
-    {
-        $this->content = $content;
-    }
-
     public function getContentType(): string
     {
         return $this->contentType;
     }
 
-    public function setContentType(string $contentType): void
+    public function withName(string $name): self
     {
-        $this->contentType = $contentType;
+        return new self($this->content, $this->contentType, $name);
     }
 
 
     /// PRIVATE METHODS
-
-    private static function isUrl(string $path): bool
-    {
-        return (bool) preg_match('#^https?://#i', $path);
-    }
 
     private static function detectContentType(string $content): string
     {

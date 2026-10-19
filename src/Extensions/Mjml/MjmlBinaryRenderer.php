@@ -1,20 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Varhall\Mailino\Extensions\Mjml;
 
-use Qferrer\Mjml\Exception\ProcessException;
-use Qferrer\Mjml\RendererInterface;
+use Varhall\Mailino\Exceptions\MjmlException;
 
 /**
  * Renders MJML using local MJML CLI. Reads stdout and stderr concurrently (no deadlock on large output)
  * and kills the process after timeout.
  */
-class MjmlBinaryRenderer implements RendererInterface
+class MjmlBinaryRenderer implements IMjmlRenderer
 {
-    /** arguments of original qferr/mjml-php renderer, keeps output identical */
+    /** input from stdin, output to stdout, minified */
     public const ARGUMENTS = [ '-i', '-s', '--config.validationLevel', '--config.minify' ];
 
-    /** @var string|string[] */
+    /** @var string|list<string> */
     private string|array $binary;
 
     private int $timeout;
@@ -26,11 +27,11 @@ class MjmlBinaryRenderer implements RendererInterface
      */
     public function __construct(string|array $binary, int $timeout = 30)
     {
-        $this->binary = $binary;
+        $this->binary = is_array($binary) ? array_values($binary) : $binary;
         $this->timeout = $timeout;
     }
 
-    public function render(string $content): string
+    public function render(string $mjml): string
     {
         $command = is_array($this->binary)
             ? array_merge($this->binary, self::ARGUMENTS)
@@ -39,21 +40,21 @@ class MjmlBinaryRenderer implements RendererInterface
         $process = proc_open($command, [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes);
 
         if (!is_resource($process)) {
-            throw new ProcessException('Unable to create MJML process.');
+            throw new MjmlException('Unable to create MJML process.');
         }
 
-        [ $stdout, $stderr, $timedOut ] = $this->communicate($process, $pipes, $content);
+        [ $stdout, $stderr, $timedOut ] = $this->communicate($process, $pipes, $mjml);
 
         if ($timedOut) {
             proc_terminate($process, 9);
             proc_close($process);
-            throw new ProcessException("MJML process timed out after {$this->timeout} s.");
+            throw new MjmlException("MJML process timed out after {$this->timeout} s.");
         }
 
         $exitCode = proc_close($process);
 
         if ($exitCode !== 0) {
-            throw new ProcessException(trim($stderr) !== '' ? trim($stderr) : "MJML process failed with exit code {$exitCode}.");
+            throw new MjmlException(trim($stderr) !== '' ? trim($stderr) : "MJML process failed with exit code {$exitCode}.");
         }
 
         return $stdout;

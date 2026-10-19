@@ -2,7 +2,7 @@
 
 namespace Tests\Mailino\Extensions\Mjml;
 
-use Qferrer\Mjml\Exception\ProcessException;
+use Varhall\Mailino\Exceptions\MjmlException;
 use Tester\Assert;
 use Tests\Engine\BaseTestCase;
 use Tests\Engine\Php;
@@ -51,7 +51,7 @@ class MjmlBinaryRendererTest extends BaseTestCase
     {
         $renderer = new MjmlBinaryRenderer($this->command());
 
-        Assert::exception(fn() => $renderer->render('<mjml><mj-invalid/></mjml>'), ProcessException::class, '~mj-invalid~');
+        Assert::exception(fn() => $renderer->render('<mjml><mj-invalid/></mjml>'), MjmlException::class, '~mj-invalid~');
     }
 
     public function testRender_Timeout()
@@ -59,7 +59,7 @@ class MjmlBinaryRendererTest extends BaseTestCase
         $renderer = new MjmlBinaryRenderer($this->command(), 1);
 
         $start = microtime(true);
-        Assert::exception(fn() => $renderer->render('<mj-sleep>'), ProcessException::class, '~timed out~');
+        Assert::exception(fn() => $renderer->render('<mj-sleep>'), MjmlException::class, '~timed out~');
         Assert::true(microtime(true) - $start < 4);
     }
 
@@ -67,7 +67,7 @@ class MjmlBinaryRendererTest extends BaseTestCase
     {
         $renderer = new MjmlBinaryRenderer('/non-existent/mjml');
 
-        Assert::exception(fn() => $renderer->render('<mjml></mjml>'), ProcessException::class);
+        Assert::exception(fn() => $renderer->render('<mjml></mjml>'), MjmlException::class);
     }
 }
 

@@ -19,7 +19,10 @@ trait TestContainer
         return $this->container;
     }
 
-    protected function createContainer(array $config = [])
+    /**
+     * @param array|string $config  additional configuration (array or path to neon file)
+     */
+    protected function createContainer(array|string $config = [])
     {
         $configurator = new Configurator();
 
