@@ -55,6 +55,7 @@ Configure mail server settings and enable Mailino extension. The configuration c
             mjml.api:
                 id: 'abcdef-1234-5678-ghijkl'
                 secret: 'ghijkl-5678-1234-abcdef'
+                url: 'https://api.mjml.io/v1'     # optional, custom MJML API endpoint
     
             mjml.binary:
                 binary: '%appDir%/../node_modules/.bin/mjml'
@@ -192,6 +193,21 @@ Extension is then used by:
                         ->setSubject('Welcome aboard');
 
 MJML credentials can be requested on https://mjml.io/api. 
+
+By default the official endpoint `https://api.mjml.io/v1` is used. Optional `url` option allows to use any custom (e.g. self-hosted) service with exactly the same contract as the official MJML API. The value is the base URL, `/render` is appended automatically and requests are authenticated using HTTP Basic auth with `id` and `secret`.
+
+    mailino:
+        extensions:
+            mjml.api:
+                id: 'my-app'
+                secret: 'my-secret'
+                url: 'https://mjml.example.com/v1'     # requests are sent to https://mjml.example.com/v1/render
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `id` | yes | Application ID (Basic auth username) |
+| `secret` | yes | Secret key (Basic auth password) |
+| `url` | no | Base URL of MJML API, default `https://api.mjml.io/v1` |
 
 #### Binary
 

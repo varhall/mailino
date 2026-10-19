@@ -23,6 +23,7 @@ mailino:
 		mjml.api:
 			id: '123456'
 			secret: '654321'
+			url: 'https://mjml.local/v1'
 
 		mjml.binary:
 			binary: 'none'
