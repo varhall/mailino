@@ -1,0 +1,4 @@
+# keep LF line endings in working copy regardless of core.autocrlf (required by PSR-12)
+* text=auto eol=lf
+
+*.png binary

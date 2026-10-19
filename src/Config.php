@@ -13,15 +13,21 @@ class Config
         $this->config = $config;
     }
 
-    public function getValue(string $option)
+    public function getValue(string $option): mixed
     {
         return property_exists($this->config, $option) ? $this->config->$option : null;
     }
 
+    public function hasExtension(string $identifier): bool
+    {
+        return isset($this->config->extensions[$identifier]);
+    }
+
     public function getExtension(string $identifier): array
     {
-        if (!array_key_exists($identifier, $this->config->extensions))
-            throw new InvalidArgumentException("Extension {$identifier} is not registered");
+        if (!$this->hasExtension($identifier)) {
+            throw new InvalidArgumentException("Extension {$identifier} is not configured, add section '{$identifier}' to mailino.extensions configuration");
+        }
 
         return $this->config->extensions[$identifier];
     }

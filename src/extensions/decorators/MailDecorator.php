@@ -32,9 +32,9 @@ abstract class MailDecorator implements IMail
         return $this->mail->getSubject();
     }
 
-    public function setSubject(string $subject, ?string $prefix = null): IMail
+    public function setSubject(string $subject): IMail
     {
-        $this->mail->setSubject($subject, $prefix);
+        $this->mail->setSubject($subject);
         return $this;
     }
 
@@ -81,6 +81,12 @@ abstract class MailDecorator implements IMail
         return $this;
     }
 
+    public function clearTo(): IMail
+    {
+        $this->mail->clearTo();
+        return $this;
+    }
+
     public function getCc(): array
     {
         return $this->mail->getCc();
@@ -88,7 +94,13 @@ abstract class MailDecorator implements IMail
 
     public function addCc(string $email, ?string $name = null): IMail
     {
-        $this->mail->addCc($email);
+        $this->mail->addCc($email, $name);
+        return $this;
+    }
+
+    public function clearCc(): IMail
+    {
+        $this->mail->clearCc();
         return $this;
     }
 
@@ -99,7 +111,13 @@ abstract class MailDecorator implements IMail
 
     public function addBcc(string $email, ?string $name = null): IMail
     {
-        $this->mail->addBcc($email);
+        $this->mail->addBcc($email, $name);
+        return $this;
+    }
+
+    public function clearBcc(): IMail
+    {
+        $this->mail->clearBcc();
         return $this;
     }
 
@@ -122,6 +140,12 @@ abstract class MailDecorator implements IMail
     public function addReplyTo(string $email, ?string $name = null): IMail
     {
         $this->mail->addReplyTo($email, $name);
+        return $this;
+    }
+
+    public function clearReplyTo(): IMail
+    {
+        $this->mail->clearReplyTo();
         return $this;
     }
 
@@ -160,6 +184,23 @@ abstract class MailDecorator implements IMail
     public function addHeader(string $name, string $value): IMail
     {
         $this->mail->addHeader($name, $value);
+        return $this;
+    }
+
+    public function removeHeader(string $name): IMail
+    {
+        $this->mail->removeHeader($name);
+        return $this;
+    }
+
+    public function getBasePath(): ?string
+    {
+        return $this->mail->getBasePath();
+    }
+
+    public function setBasePath(?string $path): IMail
+    {
+        $this->mail->setBasePath($path);
         return $this;
     }
 

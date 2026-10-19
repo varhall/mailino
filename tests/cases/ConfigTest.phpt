@@ -2,11 +2,14 @@
 
 namespace Tests\Mailino;
 
+use Nette\DI\InvalidConfigurationException;
 use Nette\InvalidArgumentException;
+use Nette\Schema\Processor;
+use Nette\Schema\ValidationException;
 use Tester\Assert;
 use Tests\Engine\ContainerTestCase;
 use Varhall\Mailino\Config;
-
+use Varhall\Mailino\DI\MailinoExtension;
 
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -70,9 +73,70 @@ class ConfigTest extends ContainerTestCase
     {
         $config = $this->getContainer()->getByType(Config::class);
 
-        Assert::throws(function() use ($config) {
+        Assert::throws(function () use ($config) {
             $config->getExtension('non-existent');
         }, InvalidArgumentException::class);
+    }
+
+    public function testGetExtension_MjmlApiDefaults()
+    {
+        $config = $this->getContainer()->getByType(Config::class);
+
+        Assert::equal([
+            'id'                => '123456',
+            'secret'            => '654321',
+            'url'               => 'https://mjml.local/v1',
+            'timeout'           => 30,
+            'connect_timeout'   => 10,
+            'validation_level'  => 'soft',
+        ], $config->getExtension('mjml.api'));
+    }
+
+    public function testGetExtension_NotConfigured()
+    {
+        $config = new Config($this->processSchema([ 'extensions' => [ 'mjml.binary' => [ 'binary' => 'mjml' ] ] ]));
+
+        Assert::false($config->hasExtension('prefix'));
+        Assert::false($config->hasExtension('mjml.api'));
+        Assert::true($config->hasExtension('mjml.binary'));
+        Assert::exception(fn() => $config->getExtension('prefix'), InvalidArgumentException::class, '~not configured~');
+    }
+
+    public function testGetExtension_Custom()
+    {
+        $config = $this->createContainer([ 'mailino' => [ 'extensions' => [ 'custom' => [ 'foo' => 'bar' ] ] ] ])->getByType(Config::class);
+
+        Assert::equal([ 'foo' => 'bar' ], $config->getExtension('custom'));
+    }
+
+    public function getInvalidConfigs()
+    {
+        return [
+            [ [ 'extensions' => [ 'mjml.api' => [ 'id' => 'x', 'secrect' => 'typo' ] ] ] ],
+            [ [ 'extensions' => [ 'mjml.api' => [ 'id' => 'x', 'secret' => 'y', 'validation_level' => 'foo' ] ] ] ],
+            [ [ 'extensions' => [ 'mjml.binary' => [] ] ] ],
+            [ [ 'extensions' => [ 'prefix' => [ 'subject' => [ 'array' ] ] ] ] ],
+            [ [ 'priority' => 9 ] ],
+            [ [ 'headers' => [ 'X-Foo' => [ 'array' ] ] ] ],
+        ];
+    }
+
+    /** @dataProvider getInvalidConfigs */
+    public function testInvalidConfig(array $config)
+    {
+        Assert::exception(fn() => $this->processSchema($config), ValidationException::class);
+    }
+
+    public function testInvalidConfig_Container()
+    {
+        Assert::exception(fn() => $this->createContainer([ 'mailino' => [ 'priority' => 0 ] ]), InvalidConfigurationException::class);
+    }
+
+    private function processSchema(array $config): object
+    {
+        $base = [ 'template_dir' => FIXTURES_DIR, 'from' => [ 'email' => 'sender@test.com' ] ];
+
+        return (new Processor())->process((new MailinoExtension())->getConfigSchema(), $base + $config);
     }
 }
 

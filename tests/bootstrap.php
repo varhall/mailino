@@ -14,9 +14,8 @@ define('SRC_DIR', realpath(TESTER_DIR . '/../src'));
 define('CONFIG_DIR', TESTER_DIR . '/config');
 define('FIXTURES_DIR', TESTER_DIR . '/fixtures');
 
-Environment::setupRobotLoader(function($loader) {
+Environment::setupRobotLoader(function ($loader) {
     $loader->addDirectory(__DIR__);
     $loader->addDirectory(SRC_DIR);
     $loader->setAutoRefresh(true);
 });
-

@@ -5,6 +5,8 @@ namespace Varhall\Mailino\DI;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use Varhall\Mailino\Config;
+use Varhall\Mailino\Extensions\Mjml\MjmlHttpApi;
+use Varhall\Mailino\LatteEngineFactory;
 
 /**
  * Nette extension class
@@ -29,9 +31,13 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
                 ])->castTo('object')
             )->default(null),
             'return_path'   => Expect::email()->nullable()->default(null),
-            'priority'      => Expect::int()->nullable()->default(null),
-            'headers'       => Expect::array()->default([]),
-            'extensions'    => Expect::array()->default([]),
+            'priority'      => Expect::int()->min(1)->max(5)->nullable()->default(null),
+            'headers'       => Expect::arrayOf('string', 'string')->default([]),
+            'embed_dir'     => Expect::string()->nullable()->default(null),
+            'temp_dir'      => Expect::string()->nullable()->default(null),
+            'strict'        => Expect::bool(false),
+            'default_extensions' => Expect::listOf('string')->default([]),
+            'extensions'    => $this->getExtensionsSchema(),
         ]);
     }
 
@@ -45,5 +51,41 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
 
         $builder->addDefinition($this->prefix('config'))
                 ->setFactory(Config::class, [ $this->config ]);
+    }
+
+    public function beforeCompile()
+    {
+        $builder = $this->getContainerBuilder();
+        $definition = $builder->getDefinition($this->prefix('template_factory'));
+
+        /** @var \stdClass $config */
+        $config = $this->config;
+
+        // configure default factory only, application may replace the service with own implementation
+        if ($definition instanceof \Nette\DI\Definitions\ServiceDefinition && $definition->getType() === LatteEngineFactory::class) {
+            $definition->setArguments([ $config->temp_dir ]);
+        }
+    }
+
+    protected function getExtensionsSchema(): Schema
+    {
+        $section = fn(array $items) => Expect::anyOf(null, Expect::structure($items)->castTo('array'))->default(null);
+
+        return Expect::structure([
+            'prefix'        => $section([
+                'subject'           => Expect::string()->required(),
+            ]),
+            'mjml.api'      => $section([
+                'id'                => Expect::string()->required(),
+                'secret'            => Expect::string()->required(),
+                'url'               => Expect::string()->nullable()->default(null),
+                'timeout'           => Expect::int(30)->min(0),
+                'connect_timeout'   => Expect::int(10)->min(0),
+                'validation_level'  => Expect::anyOf(MjmlHttpApi::VALIDATION_SOFT, MjmlHttpApi::VALIDATION_STRICT)->default(MjmlHttpApi::VALIDATION_SOFT),
+            ]),
+            'mjml.binary'   => $section([
+                'binary'            => Expect::string()->required(),
+            ]),
+        ])->otherItems(Expect::array())->skipDefaults()->castTo('array');
     }
 }

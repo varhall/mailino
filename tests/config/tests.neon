@@ -5,7 +5,7 @@ extensions:
 	mailino: Varhall\Mailino\DI\MailinoExtension
 
 mailino:
-	template_dir: %appDir%/../tests/fixtures/templates/
+	template_dir: %fixturesDir%/templates
 	from:
 		email: 'sender@test.com'
 		name: 'Sender'

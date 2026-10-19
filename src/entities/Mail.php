@@ -2,27 +2,33 @@
 
 namespace Varhall\Mailino\Entities;
 
+use Latte\ContentType;
 use Latte\Engine;
 use Nette\DI\Container;
 use Nette\InvalidArgumentException;
+use Nette\InvalidStateException;
 use Nette\NotSupportedException;
 use Varhall\Mailino\Extensions\IExtension;
 
 class Mail implements IMail
 {
+    public const SUBJECT_BLOCK = 'subject';
+
     protected Container $container;
 
     protected Engine $latte;
 
     protected string $path;
 
-    protected $template;
+    protected bool $strict;
+
+    protected string $template = '';
 
     protected array $data = [];
 
-    protected string $subject;
+    protected ?string $subject = null;
 
-    protected Recipient $from;
+    protected ?Recipient $from = null;
 
     protected array $recipients = [];
 
@@ -34,16 +40,26 @@ class Mail implements IMail
 
     protected array $headers = [];
 
+    protected ?string $basePath = null;
 
-    public function __construct(Engine $latte, Container $container, string $path)
+
+    /**
+     * @param bool $strict  throw exception on warnings (e.g. undefined variable) during template rendering
+     */
+    public function __construct(Engine $latte, Container $container, string $path, bool $strict = false)
     {
         $this->latte = $latte;
         $this->container = $container;
         $this->path = $path;
+        $this->strict = $strict;
     }
 
     public function getFrom(): Recipient
     {
+        if ($this->from === null) {
+            throw new InvalidStateException('Sender (from) is not set');
+        }
+
         return $this->from;
     }
 
@@ -55,7 +71,7 @@ class Mail implements IMail
 
     public function getSubject(): string
     {
-        return $this->subject;
+        return $this->subject ?? $this->renderSubject();
     }
 
     public function setSubject(string $subject): IMail
@@ -77,12 +93,18 @@ class Mail implements IMail
 
     public function getHtmlBody(): string
     {
-        return $this->latte->renderToString($this->templatePath('html'), $this->data);
+        return $this->render($this->templatePath('html'), ContentType::Html);
     }
 
     public function getPlainBody(): string
     {
-        return $this->latte->renderToString($this->templatePath('plain'), $this->data);
+        $path = $this->templatePath('plain');
+
+        if (!is_file($path)) {
+            return '';
+        }
+
+        return $this->render($path, ContentType::Text);
     }
 
     public function getTemplate(): string
@@ -106,6 +128,11 @@ class Mail implements IMail
         return $this->addRecipient('to', $email, $name);
     }
 
+    public function clearTo(): IMail
+    {
+        return $this->clearRecipients('to');
+    }
+
     public function getCc(): array
     {
         return $this->getRecipients('cc');
@@ -114,6 +141,11 @@ class Mail implements IMail
     public function addCc(string $email, ?string $name = null): IMail
     {
         return $this->addRecipient('cc', $email, $name);
+    }
+
+    public function clearCc(): IMail
+    {
+        return $this->clearRecipients('cc');
     }
 
     public function getBcc(): array
@@ -126,22 +158,33 @@ class Mail implements IMail
         return $this->addRecipient('bcc', $email, $name);
     }
 
+    public function clearBcc(): IMail
+    {
+        return $this->clearRecipients('bcc');
+    }
+
     public function getFiles(): array
     {
         return $this->files;
     }
 
+    /**
+     * @param mixed $file  string path, \SplFileInfo, \Nette\Http\FileUpload or Attachment
+     */
     public function addFile($file, ?string $name = null): Mail
     {
-        if ($file instanceof \Nette\Http\FileUpload) {
+        if ($file instanceof Attachment) {
+            if ($name !== null) {
+                $file->setName($name);
+            }
+
+            $this->files[] = $file;
+        } elseif ($file instanceof \Nette\Http\FileUpload) {
             $this->files[] = Attachment::fromUpload($file, $name);
-
-        } else if (is_string($file)) {
+        } elseif (is_string($file)) {
             $this->files[] = Attachment::fromPath($file, $name);
-
-        } else if ($file instanceof \SplFileInfo) {
+        } elseif ($file instanceof \SplFileInfo) {
             $this->files[] = Attachment::fromFile($file, $name);
-
         } else {
             throw new NotSupportedException('Unsupported attachment type');
         }
@@ -157,6 +200,11 @@ class Mail implements IMail
     public function addReplyTo(string $email, ?string $name = null): IMail
     {
         return $this->addRecipient('replyTo', $email, $name);
+    }
+
+    public function clearReplyTo(): IMail
+    {
+        return $this->clearRecipients('replyTo');
     }
 
     public function getReturnPath(): ?string
@@ -197,17 +245,42 @@ class Mail implements IMail
         return $this;
     }
 
+    public function removeHeader(string $name): IMail
+    {
+        unset($this->headers[$name]);
+        return $this;
+    }
+
+    public function getBasePath(): ?string
+    {
+        return $this->basePath;
+    }
+
+    public function setBasePath(?string $path): IMail
+    {
+        $this->basePath = $path;
+        return $this;
+    }
+
     public function extend(string $class): IMail
     {
         return $this->getExtensionFactory($class)->extend($this);
     }
 
+    /**
+     * @param class-string $class
+     */
     public function getExtensionFactory(string $class): IExtension
     {
-        $factory = $this->container->getByType($class);
+        $factory = $this->container->getByType($class, false);
 
-        if (!($factory instanceof IExtension))
+        if ($factory === null) {
+            throw new InvalidArgumentException("Mail extension '{$class}' is not registered as a service in DI container");
+        }
+
+        if (!($factory instanceof IExtension)) {
             throw new InvalidArgumentException("Mail extension '{$class}' does not implement " . IExtension::class);
+        }
 
         return $factory;
     }
@@ -226,8 +299,53 @@ class Mail implements IMail
         return $this;
     }
 
+    protected function clearRecipients(string $type): IMail
+    {
+        unset($this->recipients[$type]);
+        return $this;
+    }
+
     protected function templatePath(string $type): string
     {
         return implode(DIRECTORY_SEPARATOR, [ $this->path, "{$this->template}.{$type}.latte" ]);
+    }
+
+    protected function renderSubject(): string
+    {
+        $path = $this->templatePath('html');
+
+        if ($this->template === '' || !is_file($path)) {
+            return '';
+        }
+
+        $this->latte->setContentType(ContentType::Html);
+
+        if (!$this->latte->createTemplate($path, $this->data)->hasBlock(self::SUBJECT_BLOCK)) {
+            return '';
+        }
+
+        $subject = $this->render($path, ContentType::Html, self::SUBJECT_BLOCK);
+        $subject = html_entity_decode(strip_tags($subject), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim((string) preg_replace('#\s+#u', ' ', $subject));
+    }
+
+    protected function render(string $path, string $contentType, ?string $block = null): string
+    {
+        $this->latte->setContentType($contentType);
+
+        if (!$this->strict) {
+            return $this->latte->renderToString($path, $this->data, $block);
+        }
+
+        set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
+            throw new \ErrorException($message, 0, $severity, $file, $line);
+        }, E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+
+        try {
+            return $this->latte->renderToString($path, $this->data, $block);
+        } finally {
+            restore_error_handler();
+        }
     }
 }

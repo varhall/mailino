@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<ruleset name="Mailino">
+    <description>Mailino coding standard (PSR-12)</description>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <exclude-pattern>tests/tmp/*</exclude-pattern>
+    <exclude-pattern>tests/cache/*</exclude-pattern>
+    <exclude-pattern>tests/fixtures/*</exclude-pattern>
+    <exclude-pattern>*/output/*</exclude-pattern>
+
+    <arg name="extensions" value="php,phpt"/>
+    <arg name="encoding" value="utf-8"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="PSR12"/>
+
+    <!-- long lines are reported as warnings only, they do not fail the build -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="0"/>
+        </properties>
+    </rule>
+
+    <!-- test files (.phpt) declare classes and run them in the same file -->
+    <rule ref="PSR1.Files.SideEffects.FoundWithSymbols">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="PSR1.Classes.ClassDeclaration.MultipleClasses">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!-- test method variants are named testMethod_Variant -->
+    <rule ref="PSR1.Methods.CamelCapsMethodName.NotCamelCaps">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+</ruleset>

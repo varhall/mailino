@@ -6,13 +6,13 @@ install:
 qa: phpstan cs
 
 cs:
-	vendor/bin/codesniffer src tests
+	vendor/bin/phpcs -n
 
 csf:
-	vendor/bin/codefixer src tests
+	vendor/bin/phpcbf
 
 phpstan:
-	vendor/bin/phpstan analyse -l max -c phpstan.neon src
+	vendor/bin/phpstan analyse -c phpstan.neon --memory-limit=512M
 
 tests:
 	vendor/bin/tester -s -p php --colors 1 -C tests/cases -c tests/config/php.ini

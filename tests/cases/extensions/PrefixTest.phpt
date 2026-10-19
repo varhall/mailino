@@ -8,7 +8,6 @@ use Varhall\Mailino\Entities\Mail;
 use Varhall\Mailino\Extensions\Decorators\PrefixDecorator;
 use Varhall\Mailino\Extensions\Prefix;
 
-
 require_once __DIR__ . '/../../bootstrap.php';
 
 class PrefixTest extends ContainerTestCase

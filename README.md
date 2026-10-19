@@ -30,13 +30,13 @@ composer require varhall/mailino
 
 ## Documentation
 
-For details on how to use this package, check out our [documentation](.docs).
+For details on how to use this package, check out our [documentation](.docs). Changes are listed in [CHANGELOG](CHANGELOG.md).
 
 ## Versions
 
 | State       | Version       | Branch   | Nette | PHP     |
 |-------------|---------------|----------|-------|---------|
-| dev         | `dev-master`  | `master` | 3.0+  | `>=8.0` |
+| dev         | `dev-master`  | `master` | 3.2+  | `>=8.1` |
 | stable      | `^1.0`        | `master` | 3.0+  | `>=8.0` |
 
 ## Development

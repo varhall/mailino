@@ -5,6 +5,7 @@ namespace Varhall\Mailino;
 use Nette\DI\Container;
 use Varhall\Mailino\Entities\IMail;
 use Varhall\Mailino\Entities\Mail;
+use Varhall\Mailino\Entities\Preview;
 
 class Mailino
 {
@@ -25,7 +26,7 @@ class Mailino
     {
         $from = $this->config->getValue('from');
 
-        $mail = (new Mail($this->latteFactory->createLatte(), $this->container, $this->config->getValue('template_dir')))
+        $mail = (new Mail($this->latteFactory->createLatte(), $this->container, $this->config->getValue('template_dir'), (bool) $this->config->getValue('strict')))
             ->setTemplate($template)
             ->setData($data)
             ->setFrom($from->email, $from->name);
@@ -45,10 +46,27 @@ class Mailino
             $mail->setPriority($priority);
         }
 
-        foreach ($this->config->getValue('headers') as $name => $value) {
+        foreach ($this->config->getValue('headers') ?? [] as $name => $value) {
             $mail->addHeader($name, $value);
         }
 
+        $embedDir = $this->config->getValue('embed_dir');
+        if ($embedDir !== null) {
+            $mail->setBasePath($embedDir);
+        }
+
+        foreach ($this->config->getValue('default_extensions') ?? [] as $extension) {
+            $mail = $mail->extend($extension);
+        }
+
         return $mail;
+    }
+
+    /**
+     * Renders mail subject and bodies without sending
+     */
+    public function preview(IMail $mail): Preview
+    {
+        return Preview::fromMail($mail);
     }
 }

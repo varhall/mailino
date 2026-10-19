@@ -6,7 +6,6 @@ use Tester\Assert;
 use Tests\Engine\BaseTestCase;
 use Varhall\Mailino\Entities\Recipient;
 
-
 require_once __DIR__ . '/../../bootstrap.php';
 
 class RecipientTest extends BaseTestCase

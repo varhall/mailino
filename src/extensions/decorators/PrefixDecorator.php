@@ -19,8 +19,11 @@ class PrefixDecorator extends MailDecorator
     {
         $subject = parent::getSubject();
 
-        if (!empty($this->getPrefix())) {
-            $subject = "[{$this->getPrefix()}] {$subject}";
+        $prefix = "[{$this->getPrefix()}] ";
+
+        // idempotent - extension applied multiple times adds prefix only once
+        if ($this->getPrefix() !== '' && !str_starts_with($subject, $prefix)) {
+            $subject = $prefix . $subject;
         }
 
         return $subject;
@@ -28,6 +31,6 @@ class PrefixDecorator extends MailDecorator
 
     public function getPrefix(): string
     {
-        return array_key_exists('subject', $this->config) ? $this->config['subject'] : '';
+        return (string) ($this->config['subject'] ?? '');
     }
 }

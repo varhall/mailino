@@ -20,7 +20,15 @@ class MjmlApi implements IExtension
     public function extend(IMail $mail): IMail
     {
         $config = $this->config->getExtension('mjml.api');
-        $api = new MjmlHttpApi($config['id'], $config['secret'], $config['url'] ?? null);
+        $api = new MjmlHttpApi(
+            $config['id'],
+            $config['secret'],
+            $config['url'] ?? null,
+            null,
+            $config['timeout'] ?? 30,
+            $config['connect_timeout'] ?? 10,
+            $config['validation_level'] ?? MjmlHttpApi::VALIDATION_SOFT
+        );
         $mjml = new ApiRenderer($api);
 
         return new MjmlDecorator($mail, $mjml);

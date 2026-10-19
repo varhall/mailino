@@ -11,7 +11,7 @@ on:
     - cron: "0 8 * * 1" # At 08:00 on Monday
 
 env:
-  extensions: "json"
+  extensions: "json, curl, fileinfo"
 
 jobs:
   tests:
@@ -36,6 +36,45 @@ jobs:
           name: output
           path: tests/**/output
 
+
+  tests-lowest:
+    name: "Tests (lowest dependencies)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: "${{ env.extensions }}"
+      - run: composer update --no-progress --prefer-dist --prefer-lowest --prefer-stable
+      - run: make tests
+        shell: bash
+
+  cs:
+    name: "Coding standard"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: "${{ env.extensions }}"
+      - run: composer install --no-progress --prefer-dist
+      - run: make cs
+        shell: bash
+
+  phpstan:
+    name: "PHPStan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: "${{ env.extensions }}"
+      - run: composer install --no-progress --prefer-dist
+      - run: make phpstan
+        shell: bash
 
   coverage:
     name: Code Coverage

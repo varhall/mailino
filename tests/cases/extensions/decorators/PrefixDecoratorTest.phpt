@@ -7,7 +7,6 @@ use Tests\Engine\BaseTestCase;
 use Varhall\Mailino\Entities\Mail;
 use Varhall\Mailino\Extensions\Decorators\PrefixDecorator;
 
-
 require_once __DIR__ . '/../../../bootstrap.php';
 
 class PrefixDecoratorTest extends BaseTestCase
@@ -30,6 +29,26 @@ class PrefixDecoratorTest extends BaseTestCase
         $decorator = new PrefixDecorator($mail);
 
         Assert::equal('subject', $decorator->getSubject());
+    }
+
+    public function testGetSubject_idempotent()
+    {
+        $mail = \Mockery::mock(Mail::class);
+        $mail->shouldReceive('getSubject')->andReturn('subject');
+
+        $decorator = new PrefixDecorator(new PrefixDecorator($mail, [ 'subject' => 'test' ]), [ 'subject' => 'test' ]);
+
+        Assert::equal('[test] subject', $decorator->getSubject());
+    }
+
+    public function testGetSubject_differentPrefixes()
+    {
+        $mail = \Mockery::mock(Mail::class);
+        $mail->shouldReceive('getSubject')->andReturn('subject');
+
+        $decorator = new PrefixDecorator(new PrefixDecorator($mail, [ 'subject' => 'A' ]), [ 'subject' => 'B' ]);
+
+        Assert::equal('[B] [A] subject', $decorator->getSubject());
     }
 }
 

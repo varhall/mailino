@@ -2,11 +2,14 @@
 
 namespace Tests\Mailino\Entities;
 
+use Nette\FileNotFoundException;
 use Nette\Http\FileUpload;
+use Nette\InvalidArgumentException;
+use Nette\IOException;
 use Tester\Assert;
 use Tests\Engine\BaseTestCase;
+use Tests\Engine\HttpServer;
 use Varhall\Mailino\Entities\Attachment;
-
 
 require_once __DIR__ . '/../../bootstrap.php';
 
@@ -34,16 +37,71 @@ class AttachmentTest extends BaseTestCase
     /** @dataProvider getFileNames */
     public function testFromUpload($name)
     {
-        $upload = \Mockery::mock(FileUpload::class);
-        $upload->shouldReceive('getContents')->andReturn('content');
-        $upload->shouldReceive('getContentType')->andReturn('type');
-        $upload->shouldReceive('getUntrustedName')->andReturn('name');
+        $upload = new FileUpload([
+            'name'      => 'name',
+            'tmp_name'  => FIXTURES_DIR . '/attachment.txt',
+            'size'      => 11,
+            'error'     => UPLOAD_ERR_OK,
+        ]);
 
         $attachment = Attachment::fromUpload($upload, $name);
 
-        Assert::equal('content', $attachment->getContent());
-        Assert::equal('type', $attachment->getContentType());
+        Assert::equal('hello world', $attachment->getContent());
+        Assert::equal('text/plain', $attachment->getContentType());
         Assert::equal($name ?? 'name', $attachment->getName());
+    }
+
+    public function testFromContent()
+    {
+        $attachment = Attachment::fromContent('%PDF-1.4 fake', 'invoice.pdf');
+
+        Assert::equal('%PDF-1.4 fake', $attachment->getContent());
+        Assert::equal('application/pdf', $attachment->getContentType());
+        Assert::equal('invoice.pdf', $attachment->getName());
+
+        $attachment = Attachment::fromContent('a;b', 'data.csv', 'text/csv');
+        Assert::equal('text/csv', $attachment->getContentType());
+    }
+
+    public function testFromPath_NotFound()
+    {
+        Assert::exception(fn() => Attachment::fromPath(FIXTURES_DIR . '/non-existent.txt'), FileNotFoundException::class);
+    }
+
+    public function testFromUrl()
+    {
+        $server = new HttpServer(FIXTURES_DIR . '/http/router.php');
+
+        try {
+            $attachment = Attachment::fromUrl($server->getUrl() . '/files/report.txt');
+
+            Assert::equal('remote content', $attachment->getContent());
+            Assert::equal('text/plain', $attachment->getContentType());
+            Assert::equal('report.txt', $attachment->getName());
+
+            Assert::exception(fn() => Attachment::fromUrl($server->getUrl() . '/404'), IOException::class);
+        } finally {
+            $server->stop();
+        }
+    }
+
+    public function testFromUrl_InvalidScheme()
+    {
+        Assert::exception(fn() => Attachment::fromUrl('file:///etc/passwd'), InvalidArgumentException::class);
+    }
+
+    public function testFromFile_UrlDeprecated()
+    {
+        $server = new HttpServer(FIXTURES_DIR . '/http/router.php');
+
+        try {
+            Assert::error(function () use ($server) {
+                $attachment = Attachment::fromFile(new \SplFileInfo($server->getUrl() . '/files/report.txt'));
+                Assert::equal('remote content', $attachment->getContent());
+            }, E_USER_DEPRECATED);
+        } finally {
+            $server->stop();
+        }
     }
 
     /** @dataProvider getFileNames */

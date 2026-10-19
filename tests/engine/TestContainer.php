@@ -2,7 +2,7 @@
 
 namespace Tests\Engine;
 
-use Nette\Configurator;
+use Nette\Bootstrap\Configurator;
 
 trait TestContainer
 {
@@ -12,22 +12,26 @@ trait TestContainer
 
     protected function getContainer()
     {
-        if ($this->container === NULL) {
+        if ($this->container === null) {
             $this->container = $this->createContainer();
         }
 
         return $this->container;
     }
 
-    protected function createContainer()
+    protected function createContainer(array $config = [])
     {
         $configurator = new Configurator();
 
         $configurator->setTempDirectory(dirname(TMP_DIR)); // shared container for performance purposes
         $configurator->setDebugMode(true);
+        $configurator->addStaticParameters([ 'fixturesDir' => FIXTURES_DIR ]);
         $configurator->addConfig(CONFIG_DIR . '/tests.neon');
+
+        if (!empty($config)) {
+            $configurator->addConfig($config);
+        }
 
         return $configurator->createContainer();
     }
-
 }
