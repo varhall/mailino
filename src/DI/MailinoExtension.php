@@ -27,23 +27,23 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
     public function getConfigSchema(): Schema
     {
         return Expect::structure([
-            'template_dir'  => Expect::string()->required(),
+            'template_dir'  => Expect::string()->dynamic()->required(),
             'from'          => Expect::structure([
-                'email'         => Expect::email()->required(),
-                'name'          => Expect::string()->nullable()->default(null),
+                'email'         => Expect::email()->dynamic()->required(),
+                'name'          => Expect::string()->dynamic()->nullable()->default(null),
             ])->required(),
             'reply_to'      => Expect::anyOf(
                 null,
                 Expect::structure([
-                    'email'         => Expect::email()->required(),
-                    'name'          => Expect::string()->nullable()->default(null),
+                    'email'         => Expect::email()->dynamic()->required(),
+                    'name'          => Expect::string()->dynamic()->nullable()->default(null),
                 ])->castTo('object')
             )->default(null),
-            'return_path'   => Expect::email()->nullable()->default(null),
-            'priority'      => Expect::int()->min(1)->max(5)->nullable()->default(null),
-            'headers'       => Expect::arrayOf('string', 'string')->default([]),
-            'embed_dir'     => Expect::string()->nullable()->default(null),
-            'temp_dir'      => Expect::string()->nullable()->default(null),
+            'return_path'   => Expect::email()->dynamic()->nullable()->default(null),
+            'priority'      => Expect::int()->dynamic()->min(1)->max(5)->nullable()->default(null),
+            'headers'       => Expect::arrayOf(Expect::string()->dynamic(), 'string')->default([]),
+            'embed_dir'     => Expect::string()->dynamic()->nullable()->default(null),
+            'temp_dir'      => Expect::string()->dynamic()->nullable()->default(null),
             'strict'        => Expect::bool(false),
             'default_extensions' => Expect::listOf('string')->default([]),
             'extensions'    => $this->getExtensionsSchema(),
@@ -111,20 +111,20 @@ class MailinoExtension extends \Nette\DI\CompilerExtension
 
         return Expect::structure([
             'prefix'        => $section([
-                'subject'           => Expect::string()->required(),
+                'subject'           => Expect::string()->dynamic()->required(),
             ]),
             'mjml.api'      => $section([
-                'id'                => Expect::string()->required(),
-                'secret'            => Expect::string()->required(),
-                'url'               => Expect::string()->nullable()->default(null),
-                'timeout'           => Expect::int(30)->min(0),
-                'connect_timeout'   => Expect::int(10)->min(0),
-                'validation_level'  => Expect::anyOf(MjmlApiRenderer::VALIDATION_SOFT, MjmlApiRenderer::VALIDATION_STRICT)
+                'id'                => Expect::string()->dynamic()->required(),
+                'secret'            => Expect::string()->dynamic()->required(),
+                'url'               => Expect::string()->dynamic()->nullable()->default(null),
+                'timeout'           => Expect::int(30)->dynamic()->min(0),
+                'connect_timeout'   => Expect::int(10)->dynamic()->min(0),
+                'validation_level'  => Expect::anyOf(MjmlApiRenderer::VALIDATION_SOFT, MjmlApiRenderer::VALIDATION_STRICT)->dynamic()
                     ->default(MjmlApiRenderer::VALIDATION_SOFT),
             ]),
             'mjml.binary'   => $section([
-                'binary'            => Expect::anyOf(Expect::string(), Expect::listOf('string'))->required(),
-                'timeout'           => Expect::int(30)->min(0),
+                'binary'            => Expect::anyOf(Expect::string()->dynamic(), Expect::listOf(Expect::string()->dynamic()))->required(),
+                'timeout'           => Expect::int(30)->dynamic()->min(0),
             ]),
         ])->otherItems(Expect::array())->skipDefaults()->castTo('array');
     }

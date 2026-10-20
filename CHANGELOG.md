@@ -1,6 +1,14 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.1 (2026-10-20)
+
+### Fixed
+- The configuration did not accept values known only at runtime, such as `%env.*%` parameters. Any request then failed with `The item 'mailino › extensions › mjml.api › id' expects to be string, dynamic given`. All configuration values can now be dynamic, and their type is validated when the container starts (`Nette\Utils\AssertionException`).
+
+### Changed
+- Requires `nette/schema` ^1.3.6. Older versions do not validate the type of dynamic values.
+
+## 2.0.0 (2026-10-20)
 
 A major version with breaking changes. See [UPGRADE-2.0.md](UPGRADE-2.0.md) for details and the upgrade checklist.
 
