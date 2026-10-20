@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.3.1 (2026-10-20)
+
+Contains all 1.3.0 changes. Use 1.3.1 instead of 1.3.0: the git history of 1.3.0 was rewritten after release, so the 1.3.0 version on Packagist refers to a commit that is no longer part of the repository.
 
 ### Fixed
 - `MjmlBinaryRenderer` emitted a "Broken pipe" notice when the MJML process exited before reading the whole input. The process error is reported instead.
